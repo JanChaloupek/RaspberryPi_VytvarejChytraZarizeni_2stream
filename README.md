@@ -1,1 +1,1 @@
-# RaspberryPi_VytvarejChytraZarizeni_2stream
+# RaspberryPi: Vytvářej chytrá zařízení

@@ -1,0 +1,3 @@
+# Ignore everything in lib and VS Code settings
+lib/
+.vscode/

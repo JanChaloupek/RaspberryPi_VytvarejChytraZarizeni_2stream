@@ -3,18 +3,19 @@ from typing import Any, Optional
 
 class SqlSensorData:
     """
-        Třída pro práci s SQLite databází pro ukládání senzorových dat (teplota, vlhkost)
-        Args:
-            db_name: Název SQLite databázového souboru
+    Třída pro práci s SQLite databází pro ukládání senzorových dat (teplota, vlhkost)
+    
+    Args:
+        db_name: Název SQLite databázového souboru
     """
     def __init__(self, db_name: str):
         self.conn = sqlite3.connect(db_name)
         self.__create_table()
 
-    def __done__(self):
+    def __del__(self):
         self.close()
 
-    def __create_table(self):
+    def __create_table(self) -> None:
         cursor = self.conn.cursor()
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sensor_data (
@@ -28,17 +29,25 @@ class SqlSensorData:
         self.conn.commit()
 
     """
-        Uzavření připojení k databázi
+    Uzavření připojení k databázi
+    
+    Args: 
+        None
+    Returns: 
+        None
     """
-    def close(self):
+    def close(self) -> None:
         self.conn.close()
 
     """
-        Vložení jednoho řádku dat do tabulky
-        Args:
-            sensor_id: ID senzoru
-            temperature: Teplota
-            humidity: Vlhkost
+    Vložení jednoho řádku dat do tabulky
+    
+    Args:
+        sensor_id: ID senzoru
+        temperature: Teplota
+        humidity: Vlhkost
+    Returns:
+        None
     """
     def insert_data(self, sensor_id: str, temperature: float, humidity: Optional[float] = None) -> None:
         cursor = self.conn.cursor()
@@ -49,13 +58,16 @@ class SqlSensorData:
         self.conn.commit()
 
     """
-        Provedeni SELECT dotazu
-        Args:
-            columns: Sloupce pro výběr (výchozí '*')
-            where_clause: Podmínka WHERE (výchozí '')
-            group_by: Podmínka GROUP BY (výchozí '')
-            having: Podmínka HAVING (výchozí '')
-            order_by: Podmínka ORDER BY (výchozí '')
+    Provedeni SELECT dotazu
+
+    Args:
+        columns: Sloupce pro výběr (výchozí '*')
+        where_clause: Podmínka WHERE (výchozí '')
+        group_by: Podmínka GROUP BY (výchozí '')
+        having: Podmínka HAVING (výchozí '')
+        order_by: Podmínka ORDER BY (výchozí '')
+    Returns: 
+        Objekt kurzoru s výsledky dotazu
     """
     def __execute_select(self, columns: str = '*', where_clause: str = '', group_by: str = '', having: str = '', order_by: str = '') -> sqlite3.Cursor:
         query = f'SELECT {columns} FROM sensor_data'
@@ -73,29 +85,33 @@ class SqlSensorData:
 
 
     """
-        Provedení SELECT dotazu a vrácení jednoho řádku výsledku
-        Args:
-            columns: Sloupce pro výběr (výchozí '*')
-            where_clause: Podmínka WHERE (výchozí '')
-            group_by: Podmínka GROUP BY (výchozí '')
-            having: Podmínka HAVING (výchozí '')
-            order_by: Podmínka ORDER BY (výchozí '')
-            Returns: Jeden řádek výsledku
+    Provedení SELECT dotazu a vrácení jednoho řádku výsledku
+
+    Args:
+        columns: Sloupce pro výběr (výchozí '*')
+        where_clause: Podmínka WHERE (výchozí '')
+        group_by: Podmínka GROUP BY (výchozí '')
+        having: Podmínka HAVING (výchozí '')
+        order_by: Podmínka ORDER BY (výchozí '')
+    Returns: 
+        Jeden řádek výsledku
     """
     def execute_select_get_one(self, columns: str = '*', where_clause: str = '', group_by: str = '', having: str = '', order_by: str = '') -> Optional[tuple[Any, ...]]:
         cursor = self.__execute_select(columns, where_clause, group_by, having, order_by)
         return cursor.fetchone()
 
     """
-        Provedení SELECT dotazu a vrácení první hodnoty prvního řádku výsledku
-        Args:
-            columns: Sloupce pro výběr (výchozí '*')
-            where_clause: Podmínka WHERE (výchozí '')
-            group_by: Podmínka GROUP BY (výchozí '')
-            having: Podmínka HAVING (výchozí '')
-            order_by: Podmínka ORDER BY (výchozí '')
-            default: Výchozí hodnota, pokud není žádný výsledek (výchozí None)
-            Returns: První hodnota prvního řádku výsledku nebo default
+    Provedení SELECT dotazu a vrácení první hodnoty prvního řádku výsledku
+
+    Args:
+        columns: Sloupce pro výběr (výchozí '*')
+        where_clause: Podmínka WHERE (výchozí '')
+        group_by: Podmínka GROUP BY (výchozí '')
+        having: Podmínka HAVING (výchozí '')
+        order_by: Podmínka ORDER BY (výchozí '')
+        default: Výchozí hodnota, pokud není žádný výsledek (výchozí None)
+    Returns: 
+        První hodnota prvního řádku výsledku nebo default
     """
     def execute_select_get_one_return_first_column(self, columns: str = '*', where_clause: str = '', group_by: str = '', having: str = '', order_by: str = '', default: Optional[Any] = None) -> Optional[Any]:
         result = self.execute_select_get_one(columns, where_clause, group_by, having, order_by)
@@ -103,24 +119,29 @@ class SqlSensorData:
 
 
     """
-        Provedení SELECT dotazu a vrácení všech řádků výsledku
-        Args:
-            columns: Sloupce pro výběr (výchozí '*')
-            where_clause: Podmínka WHERE (výchozí '')
-            group_by: Podmínka GROUP BY (výchozí '')
-            having: Podmínka HAVING (výchozí '')
-            order_by: Podmínka ORDER BY (výchozí '')    
-            Returns: Všechny řádky výsledku
+    Provedení SELECT dotazu a vrácení všech řádků výsledku
+
+    Args:
+        columns: Sloupce pro výběr (výchozí '*')
+        where_clause: Podmínka WHERE (výchozí '')
+        group_by: Podmínka GROUP BY (výchozí '')
+        having: Podmínka HAVING (výchozí '')
+        order_by: Podmínka ORDER BY (výchozí '')    
+    Returns: 
+        Všechny řádky výsledku
     """
-    def execute_select_get_all(self, columns: str = '*', where_clause: str = '', order_by: str = '', group_by: str = '', having: str = '') -> list[tuple[Any, ...]]:
+    def execute_select_get_all(self, columns: str = '*', where_clause: str = '', group_by: str = '', having: str = '', order_by: str = '') -> list[tuple[Any, ...]]:
         cursor = self.__execute_select(columns, where_clause, group_by, having, order_by)
         return cursor.fetchall()
 
 
     """
-        Vrátí názvy sloupců výsledku SELECT dotazu
-        Args:
-            columns: Sloupce pro výběr (výchozí '*')
+    Vrátí názvy sloupců výsledku SELECT dotazu
+
+    Args:
+        columns: Sloupce pro výběr (výchozí '*')
+    Returns: 
+        Seznam názvů sloupců
     """
     def get_column_names(self, columns: str = '*') -> list[str]:
         cursor = self.__execute_select(columns)
@@ -128,36 +149,48 @@ class SqlSensorData:
 
 
     """
-        Vrátí průměrnou teplotu
-        Args:
-            where_clause: Podmínka WHERE (výchozí '')
+    Vrátí průměrnou teplotu
+
+    Args:
+        where_clause: Podmínka WHERE (výchozí '')
+    Returns: 
+        Průměrná teplota nebo None
     """
     def get_average_temperature(self, where_clause: str = '') -> float | None:
         return self.execute_select_get_one_return_first_column("AVG(temperature)", where_clause=where_clause)
 
 
     """
-        Vrátí minimální teplotu
-        Args:
-            where_clause: Podmínka WHERE (výchozí '')
+    Vrátí minimální teplotu
+
+    Args:
+        where_clause: Podmínka WHERE (výchozí '')
+    Returns: 
+        Minimální teplota nebo None
     """
     def get_min_temperature(self, where_clause: str = '') -> float | None:
         return self.execute_select_get_one_return_first_column("MIN(temperature)", where_clause=where_clause)
 
 
     """
-        Vrátí maximální teplotu
-        Args:
-            where_clause: Podmínka WHERE (výchozí '')
+    Vrátí maximální teplotu
+
+    Args:
+        where_clause: Podmínka WHERE (výchozí '')
+    Returns: 
+        Maximální teplota nebo None
     """
     def get_max_temperature(self, where_clause: str = '') -> float | None:
         return self.execute_select_get_one_return_first_column("MAX(temperature)", where_clause=where_clause)
 
 
     """
-        Vrátí počet záznamů
-        Args:
-            where_clause: Podmínka WHERE (výchozí '')
+    Vrátí počet záznamů
+    
+    Args:
+        where_clause: Podmínka WHERE (výchozí '')
+    Returns:
+        Počet záznamů nebo None
     """
     def count(self, where_clause: str = '') -> int | None:
         return self.execute_select_get_one_return_first_column("COUNT(*)", where_clause=where_clause)

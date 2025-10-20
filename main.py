@@ -107,9 +107,11 @@ def signal_handler(sig, frame):
     print("\nInterrupt signal received. Exiting...")
     running = False
 
-signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == "__main__":
+    # registrace handleru pro signal interrupt
+    signal.signal(signal.SIGINT, signal_handler)
+
     # dokud máme běžet, tak čteme data ze senzoru, ukládáme je do DB a vypisujeme do konzole
     while running:
         try:

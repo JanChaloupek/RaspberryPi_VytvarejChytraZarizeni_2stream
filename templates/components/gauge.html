@@ -1,0 +1,11 @@
+{% macro gauge(arc_id, value_id, unit, label) %}
+<div class="d-flex flex-column align-items-center gauge-block">
+  <svg viewBox="0 0 120 120" class="w-75">
+    <path class="gauge-bg" d="M30,90 A40,40 0 1,1 90,90"></path>
+    <path class="gauge-fill" id="{{ arc_id }}" d="M30,90 A40,40 0 1,1 90,90"></path>
+    <text x="60" y="65" class="gauge-value" id="{{ value_id }}">--</text>
+    <text x="60" y="80" class="gauge-unit">{{ unit }}</text>
+  </svg>
+  <div class="gauge-label">{{ label }}</div>
+</div>
+{% endmacro %}

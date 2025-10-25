@@ -1,0 +1,65 @@
+/* === Gauge SVG === */
+.gauge-block {
+  margin-bottom: 1rem;
+}
+
+.gauge-value {
+  font-size: 1.2em; /* zmenšeno z 1.6em */
+  fill: #333;
+  text-anchor: middle;
+}
+
+.gauge-unit {
+  font-size: 0.8em; /* zmenšeno z 1em */
+  fill: #666;
+  text-anchor: middle;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease, stroke 0.5s ease;
+}
+
+.gauge-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 8;
+}
+
+.gauge-label {
+  margin-top: calc(-2.5rem + -1vw); /* dynamický posun podle šířky okna */
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  color: #00796b;
+}
+
+/* === Timestamp === */
+#timestamp {
+    font-weight: 500;
+    color: #555;
+}
+
+/* === Tabulka historických dat === */
+table {
+    font-size: 0.95em;
+}
+
+th, td {
+    text-align: center;
+    vertical-align: middle;
+}
+
+thead th {
+    font-weight: bold;
+}
+
+tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+tbody tr:hover {
+    background-color: #e0f7fa;
+}

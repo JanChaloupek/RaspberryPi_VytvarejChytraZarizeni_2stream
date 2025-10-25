@@ -8,12 +8,13 @@ from gpiozero import LED
 from adafruit_dht import DHT11
 from sqlSensorData import SqlSensorData
 
-# Identifikátor senzoru (zatím je jediný ale časem jich může být více)
-SENSOR_ID = "DHT11_01"
+# Identifikátory senzorů
+SENSOR_IDS = ["DHT11_01", "DHT11_02"]
 
 # Inicializace zařízení
 heartbeat_led = LED(27)                             # LED na GPIO pin 27
-dhtDevice = DHT11(board.D17)                        # DHT11 na GPIO pin 17
+dhtDevice1 = DHT11(board.D17)                        # DHT11 na GPIO pin 17
+dhtDevice2 = DHT11(board.D22)                        # DHT11 na GPIO pin 22
 keypad = Keypad([16, 20, 21])                       # Klávesnice z GPIO pinů 16 (key0), 20 (key1), 21 (key2)
 sql = SqlSensorData("data_db/sensors.db")           # SQLite databáze sensors.db s tabulkou sensor_data
 
@@ -53,15 +54,17 @@ def keypad_action():
     
     # bylo stisknuto tlačítko 0?
     if keypad.was_pressed(0):
-        """ Do konzole vypíšeme počet záznamů, průměrnou, minimální a maximální teplotu za poslední hodinu """
-        # WHERE podmínka pro konkrétní senzor a poslední hodinu
-        where = f"sensor_id = '{SENSOR_ID}' AND timestamp >= datetime('now', '-1 hour')"
-        print("Total records: {}, Temperature Avg: {:.1f}°C, Min: {:.1f}°C, Max: {:.1f}°C".format(
-            sql.count(where_clause=where), 
-            sql.get_average_temperature(where_clause=where), 
-            sql.get_min_temperature(where_clause=where), 
-            sql.get_max_temperature(where_clause=where),
-        ))
+        for sensor_id in SENSOR_IDS:
+            """ Do konzole vypíšeme počet záznamů, průměrnou, minimální a maximální teplotu za poslední hodinu """
+            # WHERE podmínka pro konkrétní senzor a poslední hodinu
+            where = f"sensor_id = '{sensor_id}' AND timestamp >= datetime('now', '-1 hour')"
+            print("{} - Total records: {}, Temperature Avg: {:.1f}°C, Min: {:.1f}°C, Max: {:.1f}°C".format(
+                sensor_id,
+                sql.count(where_clause=where),
+                sql.get_average_temperature(where_clause=where),
+                sql.get_min_temperature(where_clause=where),
+                sql.get_max_temperature(where_clause=where),
+            ))
 
         """ Export agregovaných dat z jednoho senzoru po hodinách za 1 den (za 24 hodin) do CSV souboru """
         columns = (
@@ -76,9 +79,9 @@ def keypad_action():
             fileName="exports/export24.csv",
             rows=sql.execute_select_get_all(
                 columns=columns,
-                where_clause=f"sensor_id = '{SENSOR_ID}' AND timestamp >= datetime('now', '-1 day')",
+                where_clause=f"timestamp >= datetime('now', '-1 day')",
                 group_by="sensor_id, strftime('%Y-%m-%d %H', timestamp)",
-                order_by="hour ASC",
+                order_by="sensor_id ASC, hour ASC",
             ),
             headerColumnNames=sql.get_column_names(columns=columns),
         )
@@ -89,7 +92,7 @@ def keypad_action():
         exportCsv(
             fileName="exports/export1.csv",
             rows=sql.execute_select_get_all(
-                where_clause=f"sensor_id = '{SENSOR_ID}' AND timestamp >= datetime('now', '-1 hour')",
+                where_clause=f"sensor_id = '{SENSOR_IDS[1]}' AND timestamp >= datetime('now', '-1 hour')",
                 order_by="timestamp ASC",
             ), 
             headerColumnNames=sql.get_column_names(),
@@ -116,23 +119,24 @@ if __name__ == "__main__":
     while running:
         try:
             heartbeat_led.on()
-            
-            # Čtení dat ze senzoru
-            temperature = dhtDevice.temperature
-            humidity = dhtDevice.humidity
 
-            # Ukládání dat do DB
-            if temperature is not None:
-                sql.insert_data(SENSOR_ID, temperature, humidity)
+            for sensor_id, dhtDevice in zip(SENSOR_IDS, [dhtDevice1, dhtDevice2]):
+                # Čtení dat ze senzoru
+                temperature = dhtDevice.temperature
+                humidity = dhtDevice.humidity
 
-            # Výpis do konzole
-            temperature_str = f"{temperature:.1f}°C" if temperature is not None else "N/A"
-            humidity_str = f"{humidity:.1f}%" if humidity is not None else "N/A"
-            log_str = f"Temperature: {temperature_str}, Humidity: {humidity_str}"
-            if temperature is None:
-                log_str += " - Data not inserted."               
-            print(log_str)
-            
+                # Ukládání dat do DB
+                if temperature is not None:
+                    sql.insert_data(sensor_id, temperature, humidity)
+
+                # Výpis do konzole
+                temperature_str = f"{temperature:.1f}°C" if temperature is not None else "N/A"
+                humidity_str = f"{humidity:.1f}%" if humidity is not None else "N/A"
+                log_str = f"{sensor_id} - Temperature: {temperature_str}, Humidity: {humidity_str}"
+                if temperature is None:
+                    log_str += " - Data not inserted."               
+                print(log_str)
+
             heartbeat_led.off()
 
             # během 3 sekund (30 desetin) kontrolujeme stisky tlačítek a čekáme před dalším čtením

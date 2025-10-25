@@ -10,13 +10,21 @@ class SqlSensorData:
     """
     def __init__(self, db_name: str):
         self.conn = sqlite3.connect(db_name)
-        self.__create_table()
+        self.__create_tables()
 
     def __del__(self):
         self.close()
 
-    def __create_table(self) -> None:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def __create_tables(self) -> None:
         cursor = self.conn.cursor()
+
+        # Historická data
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sensor_data (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,6 +34,17 @@ class SqlSensorData:
                 humidity REAL
             )
         ''')
+
+        # Aktuální data (jeden řádek na senzor)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS current_sensor_data (
+                sensor_id TEXT PRIMARY KEY,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                temperature REAL NOT NULL,
+                humidity REAL
+            )
+        ''')
+
         self.conn.commit()
 
     """
@@ -40,7 +59,7 @@ class SqlSensorData:
         self.conn.close()
 
     """
-    Vložení jednoho řádku dat do tabulky
+    Vložení dat z jednoho senzoru do historické tabulky a aktualizace aktuálního záznamu
     
     Args:
         sensor_id: ID senzoru
@@ -51,10 +70,29 @@ class SqlSensorData:
     """
     def insert_data(self, sensor_id: str, temperature: float, humidity: Optional[float] = None) -> None:
         cursor = self.conn.cursor()
+
+        # Vložení do historické tabulky
         cursor.execute('''
             INSERT INTO sensor_data (sensor_id, temperature, humidity)
             VALUES (?, ?, ?)
         ''', (sensor_id, temperature, humidity))
+
+        # Pokus o aktualizaci aktuálního záznamu
+        cursor.execute('''
+            UPDATE current_sensor_data
+            SET timestamp = CURRENT_TIMESTAMP,
+                temperature = ?,
+                humidity = ?
+            WHERE sensor_id = ?
+        ''', (temperature, humidity, sensor_id))
+
+        # Pokud nebyl žádný řádek aktualizován, vlož nový
+        if cursor.rowcount == 0:
+            cursor.execute('''
+                INSERT INTO current_sensor_data (sensor_id, temperature, humidity)
+                VALUES (?, ?, ?)
+            ''', (sensor_id, temperature, humidity))
+
         self.conn.commit()
 
     """

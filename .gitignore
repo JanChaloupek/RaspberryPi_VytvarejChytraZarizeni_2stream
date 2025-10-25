@@ -1,3 +1,5 @@
-# Ignore everything in lib and VS Code settings
+data_db/
+exports/
 lib/
 .vscode/
+.venv/

@@ -7,6 +7,7 @@
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="bg-light">
@@ -35,24 +36,28 @@
   <!-- Čas měření -->
   <p class="text-muted">Data ze dne: <span id="timestamp">--</span></p>
 
-  <!-- Tabulka průměrů -->
-  <h2 class="h5 mt-4">Průměry za posledních 24 hodin</h2>
-  <div class="table-responsive">
-    <table class="table table-striped table-hover table-bordered align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Hodina</th>
-          <th>Teplota (°C)</th>
-          <th>Vlhkost (%)</th>
-          <th>Vzorků</th>
-        </tr>
-      </thead>
-      <tbody id="agg_table"></tbody>
-    </table>
-  </div>
+  <!-- Historická data -->
+<h2 class="h5 mt-4">Historická data</h2>
+
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb" id="breadcrumb"></ol>
+</nav>
+
+<!-- Interaktivní tabulka -->
+<div class="table-responsive">
+  <table class="table table-striped table-hover table-bordered align-middle">
+    <thead class="table-light" id="history-head"></thead>
+    <tbody id="history-body"></tbody>
+  </table>
 </div>
 
-<!-- JavaScript -->
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+  <!-- JavaScript: rozdělené moduly -->
+  <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/breadcrumb.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/table.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/gauges.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

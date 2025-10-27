@@ -1,40 +1,78 @@
-// api.js - jednoduché fetch wrappery pro sensors, latest a aggregate
+// static/js/api.js
+// Module providing fetch helpers with AbortController protection and verbose logging.
 
-function fetchSensors() {
-  return fetch('/api/sensors').then(r => {
-    if (!r.ok) throw new Error('fetchSensors failed ' + r.status);
-    return r.json();
-  });
-}
+let sensorsController = null;
+let latestController = null;
+let aggregateController = null;
 
-function fetchLatest(sensor_id) {
-  return fetch(`/api/latest/${encodeURIComponent(sensor_id)}`)
-    .then(r => {
-      if (!r.ok) throw new Error('fetchLatest failed ' + r.status);
-      return r.json();
-    });
-}
-
-// fetchAggregate: posílat vždy local key + tz metadata
-function fetchAggregate(sensor_id, level, key) {
-  const tzInfo = getClientTzParams();
-  const params = new URLSearchParams();
-  if (tzInfo.tz) params.set('tz', tzInfo.tz);
-  if (typeof tzInfo.offset !== 'undefined' && tzInfo.offset !== null) params.set('tz_offset', String(tzInfo.offset));
-
-  // key by měl být v lokálním formátu (YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH, YYYY-MM-DDTHH:MM)
-  let keyToSend = key;
-  try {
-    keyToSend = normalizeLocalKeyForApi(level, key);
-  } catch (e) {
-    console.warn('[fetchAggregate] normalizeLocalKeyForApi failed', e);
-    keyToSend = key;
+async function fetchJsonWithAbort(url, which = 'default') {
+  console.debug(`[api] fetch start (${which}):`, url);
+  // choose controller per logical request type
+  let controllerRef;
+  if (which === 'sensors') {
+    if (sensorsController) {
+      console.debug('[api] aborting previous sensors request');
+      try { sensorsController.abort(); } catch(e){}
+    }
+    sensorsController = new AbortController();
+    controllerRef = sensorsController;
+  } else if (which === 'latest') {
+    if (latestController) {
+      console.debug('[api] aborting previous latest request');
+      try { latestController.abort(); } catch(e){}
+    }
+    latestController = new AbortController();
+    controllerRef = latestController;
+  } else if (which === 'aggregate') {
+    if (aggregateController) {
+      console.debug('[api] aborting previous aggregate request');
+      try { aggregateController.abort(); } catch(e){}
+    }
+    aggregateController = new AbortController();
+    controllerRef = aggregateController;
+  } else {
+    controllerRef = new AbortController();
   }
 
-  const url = `/api/aggregate/${encodeURIComponent(sensor_id)}/${encodeURIComponent(level)}/${encodeURIComponent(keyToSend)}?${params.toString()}`;
-  console.debug('[fetchAggregate] url=', url, 'sentKey=', keyToSend, 'origKey=', key, 'tzInfo=', tzInfo);
-  return fetch(url).then(r => {
-    if (!r.ok) throw new Error('fetchAggregate failed ' + r.status);
-    return r.json();
-  });
+  try {
+    const res = await fetch(url, { signal: controllerRef.signal });
+    console.debug(`[api] fetch response (${which}):`, url, res.status);
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[api] non-ok response (${which}) ${res.status} for ${url}:`, text);
+      throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+    const json = await res.json();
+    console.debug(`[api] fetch json (${which}) for ${url}:`, json);
+    return json;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      console.warn(`[api] fetch aborted (${which}):`, url);
+      throw err;
+    }
+    console.error(`[api] fetch failed (${which}) for ${url}:`, err);
+    throw err;
+  }
+}
+
+export async function getSensors() {
+  const data = await fetchJsonWithAbort('/api/sensors', 'sensors');
+  return data.result;
+}
+
+export async function getLatest(sensorId) {
+  const url = `/api/latest/${encodeURIComponent(sensorId)}`;
+  const data = await fetchJsonWithAbort(url, 'latest');
+  // log the exact sensor requested and what came back
+  console.debug('[api] getLatest: requested sensor=', sensorId, 'response.query?', data.query || null, 'result=', data.result);
+  return data.result;
+}
+
+export async function getAggregate(sensorId, level, key, tzName = null, tzOffset = null) {
+  const qs = new URLSearchParams();
+  if (tzName) qs.set('tz', tzName);
+  if (tzOffset) qs.set('tz_offset', tzOffset);
+  const url = `/api/aggregate/${encodeURIComponent(sensorId)}/${encodeURIComponent(level)}/${encodeURIComponent(key)}?${qs.toString()}`;
+  console.debug('[api] getAggregate URL:', url);
+  return fetchJsonWithAbort(url, 'aggregate');
 }

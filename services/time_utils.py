@@ -1,131 +1,125 @@
 # services/time_utils.py
-from datetime import datetime, timedelta, time
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-from typing import Tuple, Optional
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+import re
 
-def _ensure_tz(tz_name: Optional[str], tz_offset_min: Optional[int]) -> ZoneInfo:
-    """
-    Vrátí ZoneInfo odpovídající tz_name nebo pro tz_offset fallback na UTC (využito pouze pokud tz_name chybí).
-    Poznámka: mapování offset->zóna je nejednoznačné, proto preferujeme tz_name.
-    """
+ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
+def resolve_tz(tz_name: str | None, tz_offset: str | None):
     if tz_name:
         try:
             return ZoneInfo(tz_name)
         except Exception:
-            # pokud zadané jméno neexistuje, fallback na UTC
-            return ZoneInfo("UTC")
-    # pokud máme offset, použijeme UTC (server bude posouvat podle offset manuálně)
-    # zde nevracíme dynamickou zónu, pouze UTC a budeme posouvat pomocí offsetu
-    return ZoneInfo("UTC")
+            pass
+    if tz_offset is not None:
+        try:
+            minutes = int(tz_offset)
+            return timezone(timedelta(minutes=minutes))
+        except Exception:
+            pass
+    return timezone.utc
 
+def _is_tz_aware_str(txt: str) -> bool:
+    return bool(re.search(r'(Z|[+\-]\d{2}(:\d{2})?)$', txt))
 
-def parse_local_key_to_range(level: str, local_key: str, tz_name: Optional[str], tz_offset_min: Optional[int]) -> Tuple[str, str]:
+def parse_local_iso(local_iso: str, tzinfo):
+    txt = str(local_iso).replace(" ", "T")
+
+    # 1) tz-aware input (Z or ±HH[:MM])
+    if _is_tz_aware_str(txt):
+        try:
+            normalized = txt[:-1] + "+00:00" if txt.endswith("Z") else txt
+            aware = datetime.fromisoformat(normalized)
+            if aware.tzinfo is None:
+                aware = aware.replace(tzinfo=timezone.utc)
+            return aware.astimezone(tzinfo)
+        except Exception:
+            pass
+
+    # 2) precise local forms
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d"):
+        try:
+            naive = datetime.strptime(txt, fmt)
+            return naive.replace(tzinfo=tzinfo)
+        except ValueError:
+            continue
+
+    # 3) year-month
+    try:
+        naive = datetime.strptime(txt, "%Y-%m")
+        return naive.replace(day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=tzinfo)
+    except ValueError:
+        pass
+
+    # 4) year only
+    try:
+        naive = datetime.strptime(txt, "%Y")
+        return naive.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=tzinfo)
+    except ValueError as e:
+        raise ValueError(f"Unsupported key datetime format: {local_iso}") from e
+
+def to_utc(dt_local):
+    return dt_local.astimezone(timezone.utc)
+
+def to_local_iso_from_utc(utc_dt, tzinfo):
+    if utc_dt.tzinfo is None:
+        utc_dt = utc_dt.replace(tzinfo=timezone.utc)
+    local_dt = utc_dt.astimezone(tzinfo)
+    return local_dt.strftime(ISO_FORMAT)
+
+def parse_local_key_to_range(level: str, key: str, tzinfo):
     """
-    Převod lokálního klíče a tz informací na UTC interval vhodný pro DB dotaz.
-    Vrací (start_iso, end_iso) jako řetězce "YYYY-MM-DD HH:MM:SS" v UTC (bez 'Z').
-    Parametry:
-      - level: 'monthly','daily','hourly','minutely','raw' (nebo 'year')
-      - local_key: formáty: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH, YYYY-MM-DDTHH:MM, nebo "YYYY-MM-DD HH:MM"
-      - tz_name: např. "Europe/Prague" (preferované)
-      - tz_offset_min: posun v minutách east of UTC (pokud tz_name chybí)
-    Výsledek:
-      - start inclusive, end exclusive: [start_iso, end_iso)
+    Vrátí (start_utc_iso, end_utc_iso, group_by_str).
+    Start a end jsou ve formátu 'YYYY-%m-%d %H:%M:%S' v UTC (pro SQLite WHERE).
+    group_by_str je SQLite strftime pattern nebo None pro raw.
     """
-    if not local_key:
-        raise ValueError("local_key is required")
+    local_dt = parse_local_iso(key, tzinfo)
+    from datetime import datetime as _dt
 
-    # normalizovat vstupní key (nahrazení mezery za 'T')
-    s = local_key.strip().replace(' ', 'T')
+    # Pořadí podmínek: monthly, daily, hourly, minutely, raw
+    if level == "monthly":
+        now = _dt.now(tzinfo)
+        year = local_dt.year
+        # start = 1.1. daného roku (s úpravou pokud je aktuální měsíc 1-3 => start předchozí rok)
+        start_local = datetime(year=year, month=1, day=1, hour=0, minute=0, second=0, microsecond=0, tzinfo=tzinfo)
+        if now.month in (1, 2, 3):
+            start_local = start_local.replace(year=year - 1)
+        end_local = start_local.replace(year=start_local.year + 1)
+        group_by = "%Y-%m"
 
-    # detekce granularit podle délky / patternu
-    # podporované granularity: year, month, day, hour, minute
-    gran = None
-    if s.isdigit() and len(s) == 4:
-        gran = 'year'
-        y = int(s)
-    elif len(s) == 7 and s[4] == '-':
-        gran = 'month'
-        y, m = map(int, s.split('-', 1))
-    elif len(s) >= 10 and s[4] == '-' and s[7] == '-':
-        # day or more
-        if len(s) == 10:
-            gran = 'day'
-            y, m, d = map(int, s.split('-', 2))
-        elif len(s) == 13 and s[10] == 'T':
-            gran = 'hour'
-            y, m, d = map(int, s[:10].split('-', 2))
-            hh = int(s[11:13])
+    elif level == "daily":
+        # start = první den měsíce (pokryje i klíč YYYY-MM nebo YYYY-MM-DD)
+        start_local = local_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        if start_local.month == 12:
+            end_local = start_local.replace(year=start_local.year + 1, month=1)
         else:
-            # possible minute or second included; take minute if possible
-            if len(s) >= 16 and s[10] == 'T' and s[13] == ':':
-                gran = 'minute'
-                y, m, d = map(int, s[:10].split('-', 2))
-                hh = int(s[11:13])
-                mm = int(s[14:16])
-            else:
-                # fallback: if contains 'T' and hour parseable => hour
-                if 'T' in s and len(s) >= 13:
-                    gran = 'hour'
-                    y, m, d = map(int, s[:10].split('-', 2))
-                    hh = int(s[11:13])
-                else:
-                    raise ValueError(f"Unsupported local_key format: {local_key}")
+            end_local = start_local.replace(month=start_local.month + 1)
+        group_by = "%Y-%m-%d"
+
+    elif level == "hourly":
+        # start = začátek dne (pokryje i klíč YYYY-MM, YYYY-MM-DD, nebo s dnem)
+        start_local = local_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_local = start_local + timedelta(days=1)
+        group_by = "%Y-%m-%d %H"
+
+    elif level == "minutely":
+        # start = začátek hodiny, end = +1 hodina, group_by minutová granularita
+        start_local = local_dt.replace(minute=0, second=0, microsecond=0)
+        end_local = start_local + timedelta(hours=1)
+        group_by = "%Y-%m-%d %H:%M"
+
+    elif level == "raw":
+        # raw vždy přesně 1 minuta: start = začátek minuty, end = +1 minuta
+        start_local = local_dt.replace(second=0, microsecond=0)
+        end_local = start_local + timedelta(minutes=1)
+        group_by = None
 
     else:
-        raise ValueError(f"Unsupported local_key format: {local_key}")
+        raise ValueError(f"Unsupported level: {level}")
 
-    # získat zónu; pokud máme pouze tz_offset, použijeme UTC a aplikujeme offset manuálně
-    has_tz_name = bool(tz_name)
-    tz = _ensure_tz(tz_name, tz_offset_min)
+    start_utc = to_utc(start_local)
+    end_utc = to_utc(end_local)
 
-    def _local_dt(y, m, d, hh=0, mm=0, ss=0):
-        """Vytvoří timezone-aware local datetime podle tz_name nebo (pokud chybí) podle místního offset patche."""
-        if has_tz_name:
-            return datetime(y, m, d, hh, mm, ss, tzinfo=tz)
-        else:
-            # pokud nemáme jméno zóny, použijeme UTC a aplikujeme tz_offset_min posun jako opačný posun
-            # klient posílá tz_offset = minutes east of UTC, tedy local = UTC + offset
-            # chceme vytvořit tz-aware datetime interpretovaný jako local: local_naive -> treat as UTC then subtract offset to get UTC
-            # proto vytvoříme naive local dt and attach tzinfo=UTC then shift by -offset when converting to UTC
-            return datetime(y, m, d, hh, mm, ss, tzinfo=ZoneInfo("UTC"))
-
-    # vypočíst local_start a local_end jako tz-aware datetimes
-    if gran == 'year':
-        local_start = _local_dt(y, 1, 1, 0, 0, 0)
-        local_end = _local_dt(y + 1, 1, 1, 0, 0, 0)
-    elif gran == 'month':
-        local_start = _local_dt(y, m, 1, 0, 0, 0)
-        if m == 12:
-            local_end = _local_dt(y + 1, 1, 1, 0, 0, 0)
-        else:
-            local_end = _local_dt(y, m + 1, 1, 0, 0, 0)
-    elif gran == 'day':
-        local_start = _local_dt(y, m, d, 0, 0, 0)
-        local_end = local_start + timedelta(days=1)
-    elif gran == 'hour':
-        local_start = _local_dt(y, m, d, hh, 0, 0)
-        local_end = local_start + timedelta(hours=1)
-    elif gran == 'minute':
-        local_start = _local_dt(y, m, d, hh, mm, 0)
-        local_end = local_start + timedelta(minutes=1)
-    else:
-        raise ValueError("Unhandled granularity")
-
-    # pokud máme pouze tz_offset (bez tz_name), převést podle offset: local = UTC + offset
-    # tedy UTC = local - offset minutes
-    if not has_tz_name and tz_offset_min is not None:
-        offset_delta = timedelta(minutes=tz_offset_min)
-        utc_start = (local_start - offset_delta).astimezone(ZoneInfo("UTC"))
-        utc_end = (local_end - offset_delta).astimezone(ZoneInfo("UTC"))
-    else:
-        # máme plnou zónu, použij standardní astimezone
-        utc_start = local_start.astimezone(ZoneInfo("UTC"))
-        utc_end = local_end.astimezone(ZoneInfo("UTC"))
-
-    # formát pro SQLite: "YYYY-MM-DD HH:MM:SS" (bez Z)
-    def _fmt(dt):
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-
-    start_iso = _fmt(utc_start)
-    end_iso = _fmt(utc_end)
-    return start_iso, end_iso
+    start_iso = start_utc.strftime("%Y-%m-%d %H:%M:%S")
+    end_iso = end_utc.strftime("%Y-%m-%d %H:%M:%S")
+    return start_iso, end_iso, group_by

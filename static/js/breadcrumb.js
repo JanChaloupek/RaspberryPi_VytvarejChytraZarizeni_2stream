@@ -1,182 +1,138 @@
-// breadcrumb.js
-// Správa breadcrumb navigace: setBreadcrumbForLoad, renderBreadcrumb
-// Očekává globální proměnné/functiony: breadcrumb (array), loadAggregate, updateAll, currentAggregate,
-// normalizeLocalKeyForApi, setBreadcrumbForLoad volá se z main.js při navigaci/načtení.
+// static/js/breadcrumb.js
+// Render breadcrumb with only segments up to current level.
+// Exports renderBreadcrumb(container, level, key, onNavigate)
 
-// Inicializace
-window.breadcrumb = window.breadcrumb || [];
-
-// Definice pořadí úrovní
-const LEVEL_ORDER = ['home', 'monthly', 'daily', 'hourly', 'minutely', 'raw'];
-
-function _levelIndex(level) {
-  const idx = LEVEL_ORDER.indexOf(level);
-  return idx >= 0 ? idx : -1;
+function el(html) {
+  const template = document.createElement('template');
+  template.innerHTML = html.trim();
+  return template.content.firstChild;
 }
 
-// setBreadcrumbForLoad: doplní/aktualizuje breadcrumb tak, aby obsahoval položky až do target level.
-// Každá položka má tvar: { sensor_id, level, key, label }
-function setBreadcrumbForLoad(sensor_id, level, key, label) {
-  // fallback na DOM select pokud chybí sensor_id
-  if (!sensor_id) {
-    const sel = document.getElementById('sensor_select');
-    sensor_id = sel ? sel.value : undefined;
-  }
-  if (!sensor_id) {
-    console.warn('[setBreadcrumbForLoad] missing sensor_id, skipping breadcrumb update');
-    return;
-  }
+function makeCrumbLink(label, levelName, keyStr, isActive, onNavigate) {
+  const li = document.createElement('li');
+  li.className = 'breadcrumb-item' + (isActive ? ' active' : '');
+  if (isActive) li.setAttribute('aria-current', 'page');
 
-  const targetIdx = _levelIndex(level);
-  if (targetIdx === -1) {
-    console.warn('[setBreadcrumbForLoad] unknown level', level);
-    return;
-  }
-
-  // zachovej Home pokud je první položkou
-  let startIdx = 0;
-  if (breadcrumb.length > 0 && breadcrumb[0].level === 'home') startIdx = 1;
-
-  // nové breadcrumb pole začne prefixem (např. Home)
-  const newCr = breadcrumb.slice(0, startIdx);
-
-  // doplň úrovně od startIdx do targetIdx
-  for (let i = Math.max(startIdx, 1); i <= targetIdx; i++) {
-    const lvl = LEVEL_ORDER[i];
-    const existing = breadcrumb.find(b => b.level === lvl && b.sensor_id === sensor_id);
-    if (existing) {
-      newCr.push(existing);
-    } else {
-      if (i === targetIdx) {
-        newCr.push({ sensor_id: sensor_id, level: level, key: key, label: label });
-      } else {
-        newCr.push({ sensor_id: sensor_id, level: lvl, key: '', label: lvl });
-      }
-    }
-  }
-
-  breadcrumb = newCr;
-  console.debug('[setBreadcrumbForLoad] new breadcrumb=', JSON.parse(JSON.stringify(breadcrumb)));
-}
-
-// helper: vytvoří element s bootstrap home ikonou + skrytým popiskem pro čtečky obrazovky
-function createHomeIconWithLabel(labelText = 'Home') {
-  const container = document.createElement('span');
-  container.className = 'breadcrumb-home';
-
-  const icon = document.createElement('i');
-  icon.className = 'bi bi-house';
-  icon.setAttribute('aria-hidden', 'true');
-  container.appendChild(icon);
-
-  const sr = document.createElement('span');
-  sr.className = 'visually-hidden';
-  sr.textContent = labelText;
-  container.appendChild(sr);
-
-  return container;
-}
-
-// renderBreadcrumb: vykreslí breadcrumb do elementu s id="breadcrumb"
-function renderBreadcrumb() {
-  const el = document.getElementById('breadcrumb');
-  if (!el) {
-    console.warn('[renderBreadcrumb] #breadcrumb element not found');
-    return;
-  }
-
-  el.innerHTML = '';
-
-  // prázdný breadcrumb => aktivní home ikona
-  if (!breadcrumb || breadcrumb.length === 0) {
+  if (isActive) {
+    // render as non-clickable text for the active (last) crumb
     const span = document.createElement('span');
-    span.className = 'breadcrumb-item active';
-    span.appendChild(createHomeIconWithLabel('Home'));
-    el.appendChild(span);
-    return;
+    span.className = 'breadcrumb-link-disabled';
+    span.textContent = label;
+    span.setAttribute('role', 'text');
+    span.setAttribute('aria-disabled', 'true');
+    li.appendChild(span);
+  } else {
+    const a = document.createElement('a');
+    a.className = 'breadcrumb-item-link';
+    a.href = '#';
+    a.textContent = label;
+    a.dataset.level = levelName;
+    a.dataset.key = keyStr;
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      onNavigate(levelName, keyStr);
+    });
+    li.appendChild(a);
   }
-
-  for (let i = 0; i < breadcrumb.length; i++) {
-    const item = breadcrumb[i];
-    const isLast = (i === breadcrumb.length - 1);
-    const wrapper = document.createElement('span');
-    wrapper.className = 'breadcrumb-item-wrapper';
-
-    if (isLast) {
-      const span = document.createElement('span');
-      span.className = 'breadcrumb-item active';
-      if (item.level === 'home') {
-        span.appendChild(createHomeIconWithLabel('Home'));
-      } else {
-        span.textContent = item.label || item.level || '...';
-      }
-      wrapper.appendChild(span);
-    } else {
-      // klikatelné položky
-      if (item.level === 'home') {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.className = 'breadcrumb-item-link breadcrumb-item-home-link';
-        a.appendChild(createHomeIconWithLabel('Home'));
-
-        a.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          const sid = item.sensor_id || document.getElementById('sensor_select')?.value;
-          if (!sid) {
-            console.warn('[renderBreadcrumb] click no sensor_id, abort');
-            return;
-          }
-          if (typeof updateAll === 'function') {
-            updateAll(sid);
-          } else {
-            // fallback: load monthly for current year
-            const now = new Date();
-            const y = String(now.getFullYear());
-            setBreadcrumbForLoad(sid, 'monthly', y, `Rok: ${y}`);
-            currentAggregate = { sensor_id: sid, level: 'monthly', key: y, label: `Rok: ${y}` };
-            loadAggregate(sid, 'monthly', y, `Rok: ${y}`).catch(()=>{});
-          }
-        });
-
-        wrapper.appendChild(a);
-      } else {
-        const a = document.createElement('a');
-        a.href = '#';
-        a.className = 'breadcrumb-item-link';
-        a.textContent = item.label || item.level || '...';
-        a.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          const sid = item.sensor_id || document.getElementById('sensor_select')?.value;
-          if (!sid) {
-            console.warn('[renderBreadcrumb] click no sensor_id, abort');
-            return;
-          }
-          try {
-            setBreadcrumbForLoad(sid, item.level, item.key, item.label);
-            currentAggregate = { sensor_id: sid, level: item.level, key: item.key, label: item.label };
-            const apiKey = normalizeLocalKeyForApi(item.level, item.key || '');
-            loadAggregate(sid, item.level, apiKey, item.label).catch(()=>{});
-          } catch (e) {
-            console.warn('[renderBreadcrumb] click handler error', e);
-          }
-        });
-        wrapper.appendChild(a);
-      }
-    }
-
-    el.appendChild(wrapper);
-
-    if (i < breadcrumb.length - 1) {
-      const sep = document.createElement('span');
-      sep.className = 'breadcrumb-sep';
-      sep.textContent = '›';
-      el.appendChild(sep);
-    }
-  }
-
-  console.debug('[renderBreadcrumb] breadcrumb=', JSON.parse(JSON.stringify(breadcrumb)));
+  return li;
 }
 
-// Expose functions globally
-window.setBreadcrumbForLoad = setBreadcrumbForLoad;
-window.renderBreadcrumb = renderBreadcrumb;
+function addSeparator(ol) {
+  const sep = document.createElement('span');
+  sep.className = 'breadcrumb-sep';
+  sep.textContent = '›';
+  ol.appendChild(sep);
+}
+
+function formatPartsFromKey(key) {
+  // key expected forms: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS
+  // return object { year, month, day, hour, minute }
+  const parts = { year: null, month: null, day: null, hour: null, minute: null };
+  if (!key) return parts;
+  const t = String(key).replace(' ', 'T');
+  const dateOnly = t.split('T')[0];
+  const ymd = dateOnly.split('-');
+  if (ymd.length >= 1) parts.year = ymd[0];
+  if (ymd.length >= 2) parts.month = ymd[1];
+  if (ymd.length >= 3) parts.day = ymd[2];
+  const timePart = t.includes('T') ? t.split('T')[1] : null;
+  if (timePart) {
+    const hm = timePart.split(':');
+    if (hm.length >= 1) parts.hour = String(hm[0]).padStart(2, '0');
+    if (hm.length >= 2) parts.minute = String(hm[1]).padStart(2, '0');
+  }
+  return parts;
+}
+
+const LEVEL_TO_SEGMENTS = {
+  monthly: ['year'],
+  daily: ['year','month'],
+  hourly: ['year','month','day'],
+  minutely: ['year','month','day','hour'],
+  raw: ['year','month','day','hour','minute']
+};
+
+export function renderBreadcrumb(container, level, key, onNavigate) {
+  container.innerHTML = '';
+
+  // Home (icon)
+  const homeLi = document.createElement('li');
+  homeLi.className = 'breadcrumb-item breadcrumb-home';
+  const homeA = document.createElement('a');
+  homeA.href = '#';
+  homeA.className = 'breadcrumb-item-home-link';
+  homeA.innerHTML = '<i class="bi bi-house"></i>';
+  homeA.addEventListener('click', (e) => {
+    e.preventDefault();
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    const todayKey = `${y}-${m}-${d}`; // YYYY-MM-DD
+    onNavigate('hourly', todayKey);
+  });
+  homeLi.appendChild(homeA);
+  container.appendChild(homeLi);
+
+  const parts = formatPartsFromKey(key);
+  const segs = LEVEL_TO_SEGMENTS[level] || LEVEL_TO_SEGMENTS['raw'];
+
+  // Year
+  if (segs.includes('year') && parts.year) {
+    addSeparator(container);
+    const yearKey = `${parts.year}`;
+    container.appendChild(makeCrumbLink(`Rok: ${parts.year}`, 'monthly', yearKey, segs.length === 1, onNavigate));
+  }
+
+  // Month
+  if (segs.includes('month') && parts.month) {
+    addSeparator(container);
+    const monthKey = `${parts.year}-${parts.month}`;
+    const isActive = segs.length === 2;
+    container.appendChild(makeCrumbLink(`Měsíc: ${parts.month}`, 'daily', monthKey, isActive, onNavigate));
+  }
+
+  // Day
+  if (segs.includes('day') && parts.day) {
+    addSeparator(container);
+    const dayKey = `${parts.year}-${parts.month}-${parts.day}`;
+    const isActive = segs.length === 3;
+    container.appendChild(makeCrumbLink(`Den: ${parts.day}`, 'hourly', dayKey, isActive, onNavigate));
+  }
+
+  // Hour
+  if (segs.includes('hour') && parts.hour) {
+    addSeparator(container);
+    const hourKey = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:00`;
+    const isActive = segs.length === 4;
+    container.appendChild(makeCrumbLink(`Hodina: ${parts.hour}`, 'minutely', hourKey, isActive, onNavigate));
+  }
+
+  // Minute
+  if (segs.includes('minute') && parts.minute) {
+    addSeparator(container);
+    const minuteKey = `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+    const isActive = segs.length === 5;
+    container.appendChild(makeCrumbLink(`Minuta: ${parts.minute}`, 'raw', minuteKey, isActive, onNavigate));
+  }
+}

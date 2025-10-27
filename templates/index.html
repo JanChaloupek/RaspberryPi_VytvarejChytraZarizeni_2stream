@@ -21,6 +21,14 @@
     <select id="sensor_select" class="form-select w-auto d-inline-block"></select>
   </div>
 
+  <!-- Čas měření -->
+  <div id="snapshot-bar" class="snapshot-bar" role="status" aria-live="polite">
+    <div class="snapshot-inner">
+      <span class="snapshot-label">Data ze dne</span>
+      <time id="snapshot-time" class="snapshot-time" datetime=""></time>
+    </div>
+  </div>
+
   <!-- Gauge ukazatele -->
   {% import 'components/gauge.html' as comp %}
 
@@ -33,31 +41,28 @@
     </div>
   </div>
 
-  <!-- Čas měření -->
-  <p class="text-muted">Data ze dne: <span id="timestamp">--</span></p>
-
   <!-- Historická data -->
-<h2 class="h5 mt-4">Historická data</h2>
+  <h2 class="h5 mt-4">Historická data</h2>
 
-<!-- Breadcrumb -->
-<nav aria-label="breadcrumb">
-  <ol class="breadcrumb" id="breadcrumb"></ol>
-</nav>
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb" id="breadcrumb"></ol>
+  </nav>
 
-<!-- Interaktivní tabulka -->
-<div class="table-responsive">
-  <table class="table table-striped table-hover table-bordered align-middle">
-    <thead class="table-light" id="history-head"></thead>
-    <tbody id="history-body"></tbody>
-  </table>
-</div>
+  <!-- Interaktivní tabulka -->
+  <div class="table-responsive">
+    <table class="table table-striped table-hover table-bordered align-middle">
+      <thead class="table-light" id="history-head"></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </div>
 
-  <!-- JavaScript: rozdělené moduly -->
-  <script src="{{ url_for('static', filename='js/utils.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/api.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/breadcrumb.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/table.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/gauges.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- JavaScript: rozdělené moduly (ES modules) -->
+  <script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/breadcrumb.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/table.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/gauges.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

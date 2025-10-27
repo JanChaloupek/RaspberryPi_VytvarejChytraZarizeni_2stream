@@ -7,8 +7,10 @@ if [ ! -d ".venv" ]; then
     python3 -m venv .venv
 fi
 
+
 # Aktivace virtuálního prostředí
 source .venv/bin/activate
+
 
 # Kontrola Flasku
 if ! pip show flask > /dev/null 2>&1; then
@@ -16,10 +18,15 @@ if ! pip show flask > /dev/null 2>&1; then
     pip install flask
 fi
 
+
 # Spuštění serveru
 export FLASK_APP=app.py
 export FLASK_ENV=development
 flask run
+
+# Čekání na stisk klávesy
+read -n 1 -s -r -p "Stiskni libovolnou klávesu pro ukončení..."
+echo
 
 # run:
 # chmod +x start.sh

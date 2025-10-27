@@ -1,66 +1,72 @@
 # services/aggregate_service.py
-import logging
-from services.time_utils import parse_local_key_to_range
-from typing import List, Dict, Optional
+from datetime import datetime, timezone
+from services.time_utils import resolve_tz, parse_local_key_to_range, to_local_iso_from_utc
+from db import SqlSensorData
 
-logger = logging.getLogger(__name__)
+def _round2(value):
+    return round(value, 2) if value is not None else None
 
-class AggregateService:
-    def __init__(self, db_factory):
-        """
-        db_factory: třída (neinstanciovaný) SqlSensorData, aby service mohla vytvářet kontextové připojení.
-        """
-        self.db_factory = db_factory
-
-    def handle_aggregate(self, sensor_id: str, level: str, key: str, tz_name: Optional[str], tz_offset: Optional[str]) -> List[Dict]:
-        """
-        Vrátí JSON-serializovatelný seznam řádků pro danou úroveň.
-        tz_offset očekává řetězec minut; převod na int se provede zde.
-        """
-        tz_offset_min = None
-        if tz_offset is not None:
-            try:
-                tz_offset_min = int(tz_offset)
-            except Exception:
-                tz_offset_min = None
-
-        # Log request params
-        logger.info("handle_aggregate request: sensor_id=%s level=%s key=%s tz=%s tz_offset=%s",
-                    sensor_id, level, key, tz_name, tz_offset_min)
-
-        # Převod lokálního key na UTC interval vhodný pro DB dotazy
+def _normalize_aggregated_row(row, tzinfo):
+    """
+    Převod tvaru vráceného z get_aggregated na požadované výstupní sloupce
+    a zaokrouhlení průměrů na 2 desetinná místa.
+    """
+    key_str = row.get("key")
+    parsed_utc = None
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H", "%Y-%m-%d", "%Y-%m"):
         try:
-            start_db, end_db = parse_local_key_to_range(level, key, tz_name, tz_offset_min)
-        except Exception as e:
-            logger.exception("parse_local_key_to_range failed for key=%s level=%s tz=%s tz_offset=%s",
-                             key, level, tz_name, tz_offset_min)
-            raise
+            parsed_utc = datetime.strptime(key_str, fmt).replace(tzinfo=timezone.utc)
+            break
+        except Exception:
+            continue
+    if parsed_utc is None:
+        local_iso = key_str
+    else:
+        local_iso = to_local_iso_from_utc(parsed_utc, tzinfo)
 
-        # Log computed UTC interval
-        logger.info("Computed UTC interval for query: start=%s end=%s (for key=%s level=%s tz=%s tz_offset=%s)",
-                    start_db, end_db, key, level, tz_name, tz_offset_min)
+    return {
+        "key": local_iso,
+        "temperature": _round2(row.get("avg_temp")),
+        "humidity": _round2(row.get("avg_hum")),
+        "count": int(row.get("count") or 0)
+    }
 
-        with self.db_factory() as db:
-            if level == 'monthly':
-                rows = db.get_aggregated(sensor_id, start_db, end_db, group_by='%Y-%m')
-            elif level == 'daily':
-                rows = db.get_aggregated(sensor_id, start_db, end_db, group_by='%Y-%m-%d')
-            elif level == 'hourly':
-                rows = db.get_aggregated(sensor_id, start_db, end_db, group_by='%Y-%m-%dT%H')
-            elif level == 'minutely':
-                rows = db.get_aggregated(sensor_id, start_db, end_db, group_by='%Y-%m-%dT%H:%M')
-            elif level == 'raw':
-                rows = db.get_measurements_range(sensor_id, start_db, end_db)
-            else:
-                raise ValueError(f'Neznámá úroveň agregace: {level}')
+def _normalize_measurement_row(row, tzinfo):
+    """
+    Převod jednotlivého měření na požadovaný tvar pro raw s zaokrouhlením na 2 desetinná místa.
+    """
+    ts_txt = row.get("timestamp")
+    try:
+        dt = datetime.strptime(ts_txt, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+        key = to_local_iso_from_utc(dt, tzinfo)
+    except Exception:
+        key = ts_txt
+    return {
+        "key": key,
+        "temperature": _round2(row.get("temperature")),
+        "humidity": _round2(row.get("humidity")),
+        "count": 1
+    }
 
-            result = [dict(r) for r in rows]
+def handle_aggregate(sensor_id: str, level: str, key: str, tz_name: str | None, tz_offset: str | None):
+    """
+    Hlavní rozhraní: vrací list dict s poli key, temperature, humidity, count.
+    """
+    print('handle_aggregate0:', level, key, tz_name)
+    tzinfo = resolve_tz(tz_name, tz_offset)
+    start_iso, end_iso, group_by = parse_local_key_to_range(level, key, tzinfo)
+    print('handle_aggregate1:', level, key, tz_name, start_iso, end_iso, group_by)
 
-        # Log result summary
-        logger.info("Aggregate returned %d rows for sensor=%s level=%s key=%s", len(result), sensor_id, level, key)
-        if result:
-            # log first item brief preview (safe to log keys/values)
-            first = result[0]
-            logger.debug("First row sample: %s", {k: first.get(k) for k in first.keys()})
+    with SqlSensorData() as db:
+        if level == "raw":
+            rows = db.get_measurements_range(sensor_id, start_iso, end_iso)
+            result = [_normalize_measurement_row(r, tzinfo) for r in rows]
+            return result
+
+        if not group_by:
+            raise ValueError("Aggregation group_by is not defined for this level")
+
+        rows = db.get_aggregated(sensor_id, start_iso, end_iso, group_by)
+        result = [_normalize_aggregated_row(r, tzinfo) for r in rows]
 
         return result

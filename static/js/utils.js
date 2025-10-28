@@ -1,5 +1,4 @@
 // static/js/utils.js
-// Utility helpers for key parsing, level navigation and Czech display formatting.
 
 export function isoLocalString(dt) {
   // dt = Date objekt v lokálním čase nebo ISO string parse
@@ -27,7 +26,7 @@ export function parseLocalKey(key) {
 
 // Lokalizované české zobrazení podle úrovně
 // Vychází z parseLocalKey (lokální Date) a zachovává konzistentní formáty:
-// monthly -> "MM. YYYY" (mezera po tečce), daily -> "dd.mm.yyyy", hourly -> "dd.mm.yyyy HH", ...
+// monthly -> "mm.yyyy" ), daily -> "dd.mm.yyyy", hourly -> "dd.mm.yyyy  HH", ...
 export function formatKeyForCzechDisplay(key, level) {
   if (!key) return '--';
   const d = parseLocalKey(key);
@@ -41,11 +40,11 @@ export function formatKeyForCzechDisplay(key, level) {
   const second = pad(d.getSeconds());
 
   switch (level) {
-    case 'monthly': return `${month}. ${year}`;            // MM. YYYY (mezera po tečce)
+    case 'monthly': return `${month}.${year}`;            // mm.yyyy 
     case 'daily': return `${day}.${month}.${year}`;        // dd.mm.yyyy
-    case 'hourly': return `${day}.${month}.${year} ${hour}`; // dd.mm.yyyy HH
-    case 'minutely': return `${day}.${month}.${year} ${hour}:${minute}`; // dd.mm.yyyy HH:MM
-    case 'raw': return `${day}.${month}.${year} ${hour}:${minute}:${second}`; // dd.mm.yyyy HH:MM:SS
+    case 'hourly': return `${day}.${month}.${year}  ${hour}`; // dd.mm.yyyy  HH
+    case 'minutely': return `${day}.${month}.${year}  ${hour}:${minute}`; // dd.mm.yyyy  HH:MM
+    case 'raw': return `${day}.${month}.${year}  ${hour}:${minute}:${second}`; // dd.mm.yyyy  HH:MM:SS
     default: return `${day}.${month}.${year}`;
   }
 }

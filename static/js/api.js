@@ -1,5 +1,4 @@
 // static/js/api.js
-// Module providing fetch helpers with AbortController protection and verbose logging.
 
 let sensorsController = null;
 let latestController = null;

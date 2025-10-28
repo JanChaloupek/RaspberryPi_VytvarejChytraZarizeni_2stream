@@ -1,6 +1,4 @@
 // static/js/breadcrumb.js
-// Render breadcrumb with only segments up to current level.
-// Exports renderBreadcrumb(container, level, key, onNavigate)
 
 function el(html) {
   const template = document.createElement('template');

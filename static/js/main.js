@@ -105,11 +105,6 @@ async function loadLatest() {
 
     const ts = new Date(tsIso);
     updateSnapshotFromIso(tsIso);
-//    if (Number.isNaN(ts.getTime())) {
-//      document.getElementById('timestamp').textContent = latest.timestamp || '--';
-//    } else {
-//      document.getElementById('timestamp').textContent = ts.toLocaleString();
-//    }
 
     const tempVal = (latest.temperature === null || latest.temperature === undefined) ? null : Number(latest.temperature);
     const humVal = (latest.humidity === null || latest.humidity === undefined) ? null : Number(latest.humidity);

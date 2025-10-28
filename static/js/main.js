@@ -178,9 +178,6 @@ async function loadAggregate() {
     const tableRoot = document.querySelector('table');
     renderTable(tableRoot, [], currentLevel, () => {});
   }
-
-  // refresh latest after aggregate to keep UI consistent
-  await loadLatest();
 }
 
 window.addEventListener('DOMContentLoaded', async () => {

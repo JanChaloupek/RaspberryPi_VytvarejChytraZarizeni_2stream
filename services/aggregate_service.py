@@ -52,10 +52,10 @@ def handle_aggregate(sensor_id: str, level: str, key: str, tz_name: str | None, 
     """
     Hlavní rozhraní: vrací list dict s poli key, temperature, humidity, count.
     """
-    print('handle_aggregate0:', level, key, tz_name)
+    # print('handle_aggregate0:', level, key, tz_name)
     tzinfo = resolve_tz(tz_name, tz_offset)
     start_iso, end_iso, group_by = parse_local_key_to_range(level, key, tzinfo)
-    print('handle_aggregate1:', level, key, tz_name, start_iso, end_iso, group_by)
+    # print('handle_aggregate1:', level, key, tz_name, start_iso, end_iso, group_by)
 
     with SqlSensorData() as db:
         if level == "raw":

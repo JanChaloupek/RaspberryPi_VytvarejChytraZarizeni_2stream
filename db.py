@@ -66,6 +66,6 @@ class SqlSensorData:
             WHERE sensor_id = ?
               AND timestamp >= ?
               AND timestamp < ?
-            ORDER BY timestamp ASC
+            ORDER BY timestamp DESC
         """, (sensor_id, start_iso, end_iso))
         return [dict(r) for r in cursor.fetchall()]

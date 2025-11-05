@@ -73,6 +73,7 @@ def parse_local_key_to_range(level: str, key: str, tzinfo):
     Start a end jsou ve formátu 'YYYY-%m-%d %H:%M:%S' v UTC (pro SQLite WHERE).
     group_by_str je SQLite strftime pattern nebo None pro raw.
     """
+    print(level, key, tzinfo)
     local_dt = parse_local_iso(key, tzinfo)
     from datetime import datetime as _dt
 
@@ -122,4 +123,5 @@ def parse_local_key_to_range(level: str, key: str, tzinfo):
 
     start_iso = start_utc.strftime("%Y-%m-%d %H:%M:%S")
     end_iso = end_utc.strftime("%Y-%m-%d %H:%M:%S")
+    print(level, start_iso, end_iso)
     return start_iso, end_iso, group_by

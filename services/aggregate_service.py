@@ -48,15 +48,10 @@ def _normalize_measurement_row(row, tzinfo):
         "count": 1
     }
 
-def handle_aggregate(sensor_id: str, level: str, key: str, tz_name: str | None, tz_offset: str | None):
+def handle_aggregate(sensor_id: str, level: str, tzinfo, start_iso: str, end_iso: str, group_by: str):
     """
     Hlavní rozhraní: vrací list dict s poli key, temperature, humidity, count.
     """
-    # print('handle_aggregate0:', level, key, tz_name)
-    tzinfo = resolve_tz(tz_name, tz_offset)
-    start_iso, end_iso, group_by = parse_local_key_to_range(level, key, tzinfo)
-    # print('handle_aggregate1:', level, key, tz_name, start_iso, end_iso, group_by)
-
     with SqlSensorData() as db:
         if level == "raw":
             rows = db.get_measurements_range(sensor_id, start_iso, end_iso)
@@ -70,3 +65,20 @@ def handle_aggregate(sensor_id: str, level: str, key: str, tz_name: str | None, 
         result = [_normalize_aggregated_row(r, tzinfo) for r in rows]
 
         return result
+
+def run_aggregate(sensor_id, level, key, tzinfo):
+    if level not in ('monthly', 'daily', 'hourly', 'minutely', 'raw'):
+        return 400, "Unsupported level", None, None, None, None
+
+    try:
+        start_iso, end_iso, group_by = parse_local_key_to_range(level, key, tzinfo)
+    except ValueError as e:
+        return 400, str(e), None, None, None, None
+
+    try:
+        result = handle_aggregate(sensor_id, level, tzinfo, start_iso, end_iso, group_by)
+
+    except ValueError as e:
+        return 500, str(e), None, start_iso, end_iso, group_by
+
+    return None, None, result, start_iso, end_iso, group_by

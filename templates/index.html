@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8">
-  <title>Monitorování senzorů</title>
+  <title>Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <!-- Bootstrap CSS -->
@@ -13,7 +13,7 @@
 <body class="bg-light">
 
 <div class="container py-4">
-  <h1 class="mb-4 text-primary">Monitorování senzorů</h1>
+  <h1 class="mb-4 text-primary">Dashboard</h1>
 
   <!-- Výběr senzoru -->
   <div class="mb-3">
@@ -21,41 +21,111 @@
     <select id="sensor_select" class="form-select w-auto d-inline-block"></select>
   </div>
 
-  <!-- Čas měření -->
-  <div id="snapshot-bar" class="snapshot-bar" role="status" aria-live="polite">
-    <div class="snapshot-inner">
-      <span class="snapshot-label">Data ze dne</span>
-      <time id="snapshot-time" class="snapshot-time" datetime=""></time>
+  <!-- Actuator controls -->
+  <section id="actuators" class="mb-4" aria-labelledby="actuators-title">
+    <h2 id="actuators-title" class="h5 mb-3">Ovládání aktuátorů</h2>
+
+    <div class="card p-3">
+      <div class="row g-3 align-items-center">
+
+        <!-- LED -->
+        <div class="col-12 col-md-3">
+          <label class="form-label fw-bold d-block">LED</label>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="led-toggle" aria-describedby="led-status">
+            <label class="form-check-label" for="led-toggle" id="led-status">Vypnuto</label>
+          </div>
+        </div>
+
+        <!-- Relay -->
+        <div class="col-12 col-md-5">
+          <label class="form-label fw-bold d-block">RELE</label>
+          <div class="btn-group" role="group" aria-label="Relay mode">
+            <button type="button" class="btn btn-outline-success" id="relay-on">Zapnuto</button>
+            <button type="button" class="btn btn-outline-danger" id="relay-off">Vypnuto</button>
+            <button type="button" class="btn btn-outline-primary" id="relay-auto">Termostat</button>
+          </div>
+          <div class="small text-muted mt-1" id="relay-mode" aria-live="polite">Režim: -</div>
+        </div>
+
+        <!-- Setpoint slider -->
+        <div class="col-12 col-md-4">
+          <label for="setpoint" class="form-label fw-bold">Regulovaná teplota</label>
+          <div class="d-flex align-items-center gap-2">
+            <input type="range" class="form-range" min="5" max="40" step="0.5" id="setpoint">
+            <div class="fw-bold ms-2" id="setpoint-value">-- °C</div>
+          </div>
+          <div class="form-text">Regulovaná teplota termostatu</div>
+        </div>
+
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Gauge ukazatele -->
-  {% import 'components/gauge.html' as comp %}
+  <!-- senzor data -->
+  <section id="senzor-data" class="mb-4" aria-labelledby="senzors-title">
+    <h2 id="actuators-title" class="h5 mb-3">Aktuální stav</h2>
 
-  <div class="row text-center mb-4">
-    <div class="col-md-6">
-      {{ comp.gauge('tempArc', 'temperature', '°C', 'Teplota') }}
+    <div class="card p-3">
+      <div class="row g-3 align-items-center">
+        <!-- Čas měření -->
+        <div id="snapshot-bar" class="snapshot-bar" role="status" aria-live="polite">
+          <div class="snapshot-inner">
+            <span class="snapshot-label">Data ze dne</span>
+            <time id="snapshot-time" class="snapshot-time" datetime=""></time>
+          </div>
+        </div>
+
+        <!-- Gauge ukazatele -->
+        {% import 'components/gauge.html' as comp %}
+
+        <div class="row text-center mb-4">
+          <div class="col-md-6">
+            {{ comp.gauge('tempArc', 'temperature', '°C', 'Teplota') }}
+          </div>
+          <div class="col-md-6">
+            {{ comp.gauge('humArc', 'humidity', '%', 'Vlhkost') }}
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="col-md-6">
-      {{ comp.gauge('humArc', 'humidity', '%', 'Vlhkost') }}
+
+    <!-- Historická data -->
+    <h2 class="h5 mt-4">Historická data</h2>
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb" id="breadcrumb"></ol>
+    </nav>
+
+    <!-- Interaktivní tabulka -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover table-bordered align-middle">
+        <thead class="table-light" id="history-head"></thead>
+        <tbody id="history-body"></tbody>
+      </table>
     </div>
-  </div>
+  </section>
 
-  <!-- Historická data -->
-  <h2 class="h5 mt-4">Historická data</h2>
+  <!-- Log viewer -->
+  <section id="log-viewer" class="mb-4" aria-labelledby="logs-title">
+    <h2 id="logs-title" class="h5 mb-3">Prohlížeč logů</h2>
 
-  <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb" id="breadcrumb"></ol>
-  </nav>
+    <div class="card p-3">
+      <div class="d-flex align-items-center mb-2 gap-2">
+        <button id="logs-refresh" class="btn btn-sm btn-outline-primary">Obnovit</button>
+        <div class="form-check form-switch ms-2">
+          <input class="form-check-input" type="checkbox" id="logs-autorefresh">
+          <label class="form-check-label" for="logs-autorefresh">Automatické obnovení (5 s)</label>
+        </div>
+        <div class="ms-auto text-muted small" id="logs-status"></div>
+      </div>
 
-  <!-- Interaktivní tabulka -->
-  <div class="table-responsive">
-    <table class="table table-striped table-hover table-bordered align-middle">
-      <thead class="table-light" id="history-head"></thead>
-      <tbody id="history-body"></tbody>
-    </table>
-  </div>
+      <div class="border rounded bg-dark text-light p-2" style="font-family: monospace; max-height: 400px; overflow:auto;">
+        <pre id="logs-pre" class="mb-0" aria-live="polite" style="white-space: pre-wrap;"></pre>
+      </div>
+    </div>
+  </section>
 
   <!-- JavaScript: rozdělené moduly (ES modules) -->
   <script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
@@ -64,5 +134,7 @@
   <script type="module" src="{{ url_for('static', filename='js/table.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/gauges.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/actuators.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/logs.js') }}"></script>
 </body>
 </html>

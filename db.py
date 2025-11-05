@@ -1,25 +1,51 @@
 # db.py
 import sqlite3
 import os
+from typing import Optional, Dict, Iterator, Tuple, Any
 
 class SqlSensorData:
-    def __init__(self, db_path='../DU4/data_db/sensors.db'):
-        self.db_path = db_path
-        self.conn = None
+    """
+    Db helper s interně uloženou výchozí db_path.
+    Použití:
+        db = SqlSensorData()
+        db.open()
+        ... používat db ...
+        db.close()
+    Nebo jako context manager:
+        with SqlSensorData() as db:
+            ...
+    """
+    def __init__(self, db_path: str = '../data_db/sensors.db'):
+        self._db_path = db_path
+        self.conn: Optional[sqlite3.Connection] = None
 
-    def __enter__(self):
-        if not os.path.exists(self.db_path):
-            raise FileNotFoundError(f"Databázový soubor '{self.db_path}' neexistuje.")
-        # otevřeme připojení; timestampy v DB očekáváme jako UTC uložené ve formátu 'YYYY-MM-DD HH:MM:SS'
-        # (pokud vaše DB ukládá lokální čas, je potřeba tomu přizpůsobit parse_local_key_to_range)
-        self.conn = sqlite3.connect(self.db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+    # explicitní otevření/zavření
+    def open(self):
+        if self.conn:
+            return
+        if not os.path.exists(self._db_path):
+            raise FileNotFoundError(f"Databázový soubor '{self._db_path}' neexistuje.")
+        self.conn = sqlite3.connect(self._db_path, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
         self.conn.row_factory = sqlite3.Row
+
+    def close(self):
+        if self.conn:
+            try:
+                self.conn.close()
+            finally:
+                self.conn = None
+
+    # context manager kompatibilita
+    def __enter__(self):
+        self.open()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.conn:
-            self.conn.close()
+        self.close()
 
+    # -------------------------
+    # Sensor metody
+    # -------------------------
     def get_sensor_ids(self) -> list:
         cursor = self.conn.cursor()
         cursor.execute("SELECT sensor_id FROM current_sensor_data ORDER BY sensor_id")
@@ -35,7 +61,6 @@ class SqlSensorData:
         row = cursor.fetchone()
         return dict(row) if row else None
 
-    # Generická agregace nad časovým intervalem; group_by je strftime formát (např. '%Y-%m-%d' nebo '%Y-%m')
     def get_aggregated(self, sensor_id: str, start_iso: str, end_iso: str, group_by: str):
         cursor = self.conn.cursor()
         sql = f"""
@@ -54,7 +79,6 @@ class SqlSensorData:
         cursor.execute(sql, (sensor_id, start_iso, end_iso))
         return [dict(r) for r in cursor.fetchall()]
 
-    # Vrátí jednotlivá měření v intervalu [start_iso, end_iso)
     def get_measurements_range(self, sensor_id: str, start_iso: str, end_iso: str):
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -69,3 +93,69 @@ class SqlSensorData:
             ORDER BY timestamp DESC
         """, (sensor_id, start_iso, end_iso))
         return [dict(r) for r in cursor.fetchall()]
+
+    # -------------------------
+    # Params metody
+    # -------------------------
+    def nv_set(self, key: str, value: str):
+        if not self.conn:
+            raise RuntimeError("DB connection is not open")
+        cur = self.conn.cursor()
+        cur.execute('''
+            INSERT INTO nonvolatile_params(key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+        ''', (key, value))
+        self.conn.commit()
+
+    def nv_get(self, key: str) -> Optional[str]:
+        if not self.conn:
+            raise RuntimeError("DB connection is not open")
+        cur = self.conn.cursor()
+        cur.execute('SELECT value FROM nonvolatile_params WHERE key = ?', (key,))
+        row = cur.fetchone()
+        return row[0] if row else None
+
+    def nv_iter_prefixed(self, prefix: str) -> Iterator[Tuple[str, str]]:
+        if not self.conn:
+            raise RuntimeError("DB connection is not open")
+        cur = self.conn.cursor()
+        cur.execute('SELECT key, value FROM nonvolatile_params WHERE key LIKE ?', (f'{prefix}%',))
+        for k, v in cur.fetchall():
+            yield k, v
+
+    # Helpers pro actuatory
+    def load_actuator_params(self, prefix: str = 'actuator-') -> Dict[str, Dict[str, Any]]:
+        out: Dict[str, Dict[str, Any]] = {}
+        for key, raw in self.nv_iter_prefixed(prefix):
+            suffix = key[len(prefix):]
+            try:
+                name, param = suffix.split("-", 1)
+            except Exception:
+                continue
+            val = raw
+            if val in ("True", "False"):
+                parsed = True if val == "True" else False
+            else:
+                try:
+                    if "." in val:
+                        parsed = float(val)
+                    else:
+                        parsed = int(val)
+                except Exception:
+                    parsed = val
+            out.setdefault(name, {})[param] = parsed
+        return out
+
+    def save_actuator_param(self, name: str, param: str, value: Any, prefix: str = 'actuator-'):
+        key = f"{prefix}{name}-{param}"
+        self.nv_set(key, str(value))
+
+    def save_actuator_params_bulk(self, params: Dict[str, Dict[str, Any]], prefix: str = 'actuator-'):
+        for name, kv in params.items():
+            for p, v in kv.items():
+                try:
+                    param_name = f"{prefix}{name}-{p}"
+                    value = str(v)
+                    self.nv_set(param_name, value)
+                except Exception as ex:
+                    print(ex)

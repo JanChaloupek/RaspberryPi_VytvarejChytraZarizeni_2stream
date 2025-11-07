@@ -1,5 +1,5 @@
 import gpiozero
-
+import time
 
 class Keypad:
     def __init__(self, pinNumbers: list[int]):
@@ -8,6 +8,47 @@ class Keypad:
             button.when_pressed = lambda ind=index: self.__handle_key_press(ind)
         self.__key_press = [False] * len(pinNumbers)
 
+    def stop(self):
+        # 1) odregistrovat všechny callbacky
+        for b in self.buttons:
+            try:
+                b.when_pressed = None
+                b.when_released = None
+                b.when_held = None
+            except Exception:
+                pass
+
+        # 2) krátce počkat aby backend dokončil právě probíhající zpracování eventů
+        #    a případně počkat na uvolnění tlačítka
+        for b in self.buttons:
+            try:
+                # wait_for_release je blokující s timeoutem, bezpečné použít krátký timeout
+                b.wait_for_release(timeout=0.1)
+            except Exception:
+                # ignorovat timeout/chyby — jen dáváme šanci backendu dokončit
+                pass
+
+        # ještě malá dodatečná prodleva
+        try:
+            time.sleep(0.08)
+        except Exception:
+            pass
+
+    def close(self):
+        # Odregistrovat callbacky
+        self.stop()
+
+        # Zavřít tlačítka
+        for b in self.buttons:
+            try: b.close()
+            except Exception: pass
+
+        # Uvolnit reference
+        self.buttons = []
+
+        # reset interního stavu kláves
+        try: self.__key_press = [False] * len(self.__key_press)
+        except Exception: self.__key_press = []
 
     """
     Pomocná metoda pro zapamatování stisknutí tlačítka. 

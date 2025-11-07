@@ -45,6 +45,15 @@ class SqlSensorData:
             )
         ''')
 
+        # Nonvolatile params
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS nonvolatile_params (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+            )
+        ''')
+
         self.conn.commit()
 
     """

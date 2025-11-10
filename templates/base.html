@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Dashboard{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  {% block head_links %}
+    <!-- Default CSS knihovny -->
+  {% endblock %}
+</head>
+<body class="bg-light">
+
+<nav class="navbar navbar-light bg-white border-bottom fixed-top">
+  <div class="container-fluid">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-primary d-lg-none me-3" type="button"
+              data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas"
+              aria-controls="sidebarOffcanvas" aria-label="Otevřít menu">
+        <i class="bi bi-list"></i>
+      </button>
+      <a class="navbar-brand mb-0 h1 text-primary d-flex align-items-center gap-2" href="#">
+        {% if favicon_filename %}
+          <img src="{{ url_for('static', filename=favicon_filename) }}" alt="Logo" width="24" height="24">
+        {% endif %}
+        {% block navbar_title %}Dashboard{% endblock %}
+      </a>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% block navbar_right %}{% endblock %}
+    </div>
+  </div>
+</nav>
+
+<div class="container-fluid pt-navbar">
+  <div class="row">
+    {% block sidebar %}{% endblock %}
+    <main class="col-12 col-lg-10 py-4">
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+          <div class="flash-container mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zavřít"></button>
+            </div>
+          {% endfor %}
+          </div>
+      {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{% block scripts %}
+  <!-- Default JS knihovny -->
+{% endblock %}
+</body>
+</html>

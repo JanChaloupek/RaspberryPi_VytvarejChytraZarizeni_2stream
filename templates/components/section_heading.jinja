@@ -1,0 +1,14 @@
+{% macro section_heading(title, icon=None, note=None, level=2, id=None) %}
+  <div class="section-heading d-flex align-items-center justify-content-between mb-3"
+       {% if id %}id="{{ id }}"{% endif %}>
+    <div class="d-flex align-items-center gap-2">
+      {% if icon %}
+        <i class="{{ icon }}"></i>
+      {% endif %}
+      <h{{ level }} class="mb-0">{{ title }}</h{{ level }}>
+    </div>
+    {% if note %}
+      <span class="section-note text-muted">{{ note }}</span>
+    {% endif %}
+  </div>
+{% endmacro %}

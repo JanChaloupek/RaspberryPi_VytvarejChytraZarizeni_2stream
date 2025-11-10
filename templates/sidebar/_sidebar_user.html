@@ -1,0 +1,13 @@
+<div class="mt-auto pt-3">
+  <small class="text-muted d-block mb-2">
+    Přihlášen jako:
+    <strong>{{ current_user.id if current_user.is_authenticated else 'anon' }}</strong>
+  </small>
+  {% if current_user.is_authenticated %}
+    <form action="{{ url_for('logout') }}" method="post" class="d-inline">
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-box-arrow-right"></i> Odhlást se
+      </button>
+    </form>
+  {% endif %}
+</div>

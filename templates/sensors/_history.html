@@ -1,0 +1,38 @@
+{% from "components/section_heading.jinja" import section_heading %}
+
+<section id="sensors-history" class="mb-4" aria-labelledby="sensors-history-title">
+  {{ section_heading("Historická data", icon="bi-clock-history", id="sensors-history-title", level=5, note='<span id="history-note"></span>') }}
+
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb" id="breadcrumb"></ol>
+  </nav>
+
+  <div class="row g-3">
+    <div class="col-12 col-lg-7">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover table-bordered align-middle">
+          <thead class="table-light" id="history-head"></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="col-12 col-lg-5">
+      <div class="card p-3">
+        <div class="d-flex align-items-center mb-2">
+          <h3 class="h6 mb-0 me-2">Graf</h3>
+          <div class="text-muted small" id="plot-range">—</div>
+        </div>
+        <div id="plot-container" style="height:360px; min-height:240px;"></div>
+        <div class="mt-2 d-flex gap-2">
+          <select id="plot-type" class="form-select form-select-sm w-auto">
+            <option value="line">Čára</option>
+            <option value="scatter">Bodový</option>
+            <option value="bar">Sloupce</option>
+          </select>
+          <button id="plot-refresh" class="btn btn-sm btn-outline-primary">Obnovit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

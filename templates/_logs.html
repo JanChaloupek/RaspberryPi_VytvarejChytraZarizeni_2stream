@@ -1,0 +1,20 @@
+{% from "components/section_heading.jinja" import section_heading %}
+
+<section id="log-viewer" class="mb-4" aria-labelledby="logs-title">
+  {{ section_heading("Prohlížeč logů", icon="bi-journal-text", level=5) }}
+  <div class="card p-3">
+    <div class="d-flex align-items-center mb-2 gap-2">
+      <button id="logs-refresh" class="btn btn-sm btn-outline-primary">Obnovit</button>
+      <div class="form-check form-switch ms-2">
+        <input class="form-check-input" type="checkbox" id="logs-autorefresh">
+        <label class="form-check-label" for="logs-autorefresh">Automatické obnovení (5 s)</label>
+      </div>
+      <div class="ms-auto text-muted small" id="logs-status"></div>
+    </div>
+
+    <div class="border rounded bg-dark text-light p-2"
+         style="font-family: monospace; max-height: 400px; overflow:auto;">
+      <pre id="logs-pre" class="mb-0" aria-live="polite" style="white-space: pre-wrap;"></pre>
+    </div>
+  </div>
+</section>

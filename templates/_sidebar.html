@@ -1,0 +1,19 @@
+<!-- Fixní sidebar pro >= lg -->
+<aside class="d-none d-lg-block sidebar-fixed bg-white border-end py-3">
+  <div class="px-3 d-flex flex-column h-100">
+    {% include "sidebar/_sidebar_menu.html" %}
+    {% include "sidebar/_sidebar_user.html" %}
+  </div>
+</aside>
+
+<!-- Offcanvas sidebar pro < lg -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="sidebarOffcanvas" aria-labelledby="sidebarOffcanvasLabel">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title" id="sidebarOffcanvasLabel">Menu</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Zavřít"></button>
+  </div>
+  <div class="offcanvas-body d-flex flex-column">
+    {% include "sidebar/_sidebar_menu.html" %}
+    {% include "sidebar/_sidebar_user.html" %}
+  </div>
+</div>

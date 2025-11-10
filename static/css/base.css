@@ -1,0 +1,18 @@
+/* === Root variables === */
+:root {
+  --breadcrumb-text: #2c3e50;
+  --breadcrumb-muted: #9aa6b2;
+  --breadcrumb-sep-gap: 0.5rem;
+  --breadcrumb-font-size: 0.95rem;
+  --link-hover-color: #0b5fff;
+  --breadcrumb-active: #6c757d;
+  --navbar-height: 56px;
+}
+
+/* === Section heading === */
+.section-heading i {
+  font-size: 1.2rem;
+}
+
+/* === Timestamp === */
+#timestamp { font-weight: 500; color: #555; }

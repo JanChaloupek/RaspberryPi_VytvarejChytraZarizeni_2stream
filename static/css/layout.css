@@ -1,0 +1,25 @@
+/* === Layout fixes for fixed-top navbar and sidebar === */
+.pt-navbar {
+  padding-top: var(--navbar-height);
+}
+
+.sidebar-fixed {
+  position: fixed;
+  top: var(--navbar-height);
+  left: 0;
+  bottom: 0;
+  width: 16.666%; /* ~col-lg-2 */
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+}
+
+@media (min-width: 992px) {
+  main {
+    margin-left: 16.666%;
+  }
+}
+
+section {
+  scroll-margin-top: var(--navbar-height);
+}

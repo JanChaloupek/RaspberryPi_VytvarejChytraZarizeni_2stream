@@ -1,4 +1,3 @@
-// static/js/logs.js
 const API_LOG_TAIL = '/api/logs/tail';
 const TAIL_LINES = 200;
 const AUTO_INTERVAL_MS = 5000;
@@ -9,9 +8,7 @@ async function fetchLogTail() {
   const res = await fetch(API_LOG_TAIL, { cache: 'no-store' });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const payload = await res.json();
-  // expected payload.result.lines or payload.lines depending on your api helper
-  // try both
-  const lines = (payload && (payload.result && payload.result.lines)) || (payload && payload.lines) || [];
+  const lines = (payload?.result?.lines) || payload?.lines || [];
   return Array.isArray(lines) ? lines : [];
 }
 
@@ -19,7 +16,6 @@ function renderLines(lines) {
   const pre = qs('logs-pre');
   if (!pre) return;
   pre.textContent = lines.join('\n');
-  // scroll to bottom
   pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
 }
 
@@ -28,10 +24,9 @@ function setStatus(text) {
   if (s) s.textContent = text || '';
 }
 
-export function initLogs() {
+export function init() {
   const btn = qs('logs-refresh');
   const auto = qs('logs-autorefresh');
-
   let timer = null;
 
   async function doFetch() {
@@ -60,6 +55,3 @@ export function initLogs() {
   // initial load
   doFetch();
 }
-
-// auto-initialize if module is loaded
-document.addEventListener('DOMContentLoaded', initLogs);

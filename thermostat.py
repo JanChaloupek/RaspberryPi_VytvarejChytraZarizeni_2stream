@@ -118,7 +118,6 @@ class Thermostat:
                     sensor_id = actor_name.removeprefix("relay_")
                 else:
                     sensor_id = actor_name
-        
                 mode = self._get_relay_mode(actor_name)
                 if mode != "auto":
                     continue

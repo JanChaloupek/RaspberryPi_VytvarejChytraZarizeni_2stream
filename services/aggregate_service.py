@@ -66,19 +66,22 @@ def handle_aggregate(sensor_id: str, level: str, tzinfo, start_iso: str, end_iso
 
         return result
 
-def run_aggregate(sensor_id, level, key, tzinfo):
-    if level not in ('monthly', 'daily', 'hourly', 'minutely', 'raw'):
-        return 400, "Unsupported level", None, None, None, None
-
+def api_aggregate(sensor_id, level, key, tzinfo):
     try:
+        if level not in ('monthly', 'daily', 'hourly', 'minutely', 'raw'):
+            # zaslana uroven mimo vyjmenovane
+            return 400, "Unsupported level", None, None, None, None
+
         start_iso, end_iso, group_by = parse_local_key_to_range(level, key, tzinfo)
     except ValueError as e:
+        # nastala vyjimka pri dekodovani dat
         return 400, str(e), None, None, None, None
 
     try:
         result = handle_aggregate(sensor_id, level, tzinfo, start_iso, end_iso, group_by)
 
-    except ValueError as e:
+    except Exception as e:
+        # spadlo to pri ziskavani dat
         return 500, str(e), None, start_iso, end_iso, group_by
 
     return None, None, result, start_iso, end_iso, group_by

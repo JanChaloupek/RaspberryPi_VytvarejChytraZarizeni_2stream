@@ -11,11 +11,13 @@ function getQueryParam(name) {
 
 async function fetchWrappedJson(url, opts) {
   const res = await fetch(url, opts);
+  console.debug('[fetchWrappedJson] raw response', res.status, res.statusText);
   if (!res.ok) {
     const text = await res.text().catch(()=>null);
     throw new Error(`${res.status} ${res.statusText}${text ? ': '+text : ''}`);
   }
   const payload = await res.json();
+  console.debug('[fetchWrappedJson] payload', payload);
   if (payload.error) {
     throw new Error(payload.error);
   }
@@ -46,17 +48,20 @@ async function callActorApi(actorName, method = "GET", body = null) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
+  console.debug('[actuators] GET actor', actorName, method);
   return fetchWrappedJson(url, init);
 }
 
 async function callSetpointApi(actorName, method = "GET", body = null) {
-  const base = actorName ? `${API_BASE}/setpoint/${encodeURIComponent(actorName)}` : `${API_BASE}/setpoint`;
+  if (!actorName) throw new Error("No actor name provided for setpoint");
+  const url = `${API_BASE}/${encodeURIComponent(actorName)}/setpoint`;
   const init = { method, headers: {} };
   if (body !== null) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
-  return fetchWrappedJson(base, init);
+  console.debug('[actuators] GET actor', actorName, method);
+  return fetchWrappedJson(url, init);
 }
 
 async function init() {
@@ -91,61 +96,96 @@ async function init() {
   }
 
   function setLedUI(on) {
-    if (!ledToggle || !ledStatus) return;
-    ledToggle.checked = !!on;
-    ledStatus.textContent = on ? 'Zapnuto' : 'Vypnuto';
+    console.debug('[UI] setLedUI called with', on);
+    if (ledStatus) {
+      ledStatus.textContent = on ? 'Zapnuto' : 'Vypnuto';
+      console.debug('[UI] setLedUI textContent', ledStatus.textContent);
+    }else{
+      console.debug('[UI] setLedUI ledStatus not exist');
+    }
+    if (ledToggle) {
+      ledToggle.checked = !!on;
+    }
   }
+
   function setRelayUI(mode) {
-    if (!relayModeText) return;
-    relayModeText.textContent = `Režim: ${mode}`;
-    [relayOnBtn, relayOffBtn, relayAutoBtn].forEach(btn => { if (btn) btn.classList.remove('active'); });
+    console.debug('[UI] setRelayUI called with', mode);
+    if (relayModeText) {
+      relayModeText.textContent = `Režim: ${mode}`;
+      console.debug('[UI] setLedUI textContent', relayModeText.textContent);
+    }else{
+      console.debug('[UI] setLedUI relayModeText not exist');
+    }
+    // ovládací tlačítka jen pokud existují
+    [relayOnBtn, relayOffBtn, relayAutoBtn].forEach(btn => {
+      if (btn) btn.classList.remove('active');
+    });
     if (mode === 'on' && relayOnBtn) relayOnBtn.classList.add('active');
     if (mode === 'off' && relayOffBtn) relayOffBtn.classList.add('active');
     if (mode === 'auto' && relayAutoBtn) relayAutoBtn.classList.add('active');
   }
+
   function setSetpointUI(v) {
-    if (!setpoint || !setpointValue) return;
-    setpoint.value = v;
-    setpointValue.textContent = `${v} °C`;
+    console.debug('[UI] setSetpointUI called with', v);
+    if (setpointValue) {
+      setpointValue.textContent = `${v} °C`;
+      console.debug('[UI] setSetpointUI textContent', setpointValue.textContent);
+    }else{
+      console.debug('[UI] setSetpointUI setpointValue not exist');
+    }
+    if (setpoint) {
+      setpoint.value = v;
+    }
   }
 
   // load initial state for the sensor currently selected
   async function loadForCurrentSensor() {
     try {
-      const actor = getActor("led");
-      if (actor) {
-        const ledState = await callActorApi(actor, "GET");
-        if (ledState && typeof ledState.on !== 'undefined') setLedUI(ledState.on);
+      const actorLed = getActor("led");
+      if (actorLed) {
+        const ledState = await callActorApi(actorLed, "GET");
+        console.debug('[actuators] LED actor', actorLed, 'state from API', ledState);
+        if (ledState && typeof ledState.on !== 'undefined') {
+          setLedUI(ledState.on);
+        }
       } else {
         setLedUI(false);
       }
     } catch (e) {
       console.error('Load LED failed', e);
+      setLedUI(false);
     }
+
     try {
-      const actor = getActor("relay");
-      if (actor) {
-        const relayState = await callActorApi(actor, "GET");
-        if (relayState && relayState.mode) setRelayUI(relayState.mode);
+      const actorRelay = getActor("relay");
+      if (actorRelay) {
+        const relayState = await callActorApi(actorRelay, "GET");
+        console.debug('[actuators] Relay actor', actorRelay, 'state from API', relayState);
+        if (relayState && relayState.mode) {
+          setRelayUI(relayState.mode);
+        }
       } else {
         setRelayUI('auto');
       }
     } catch (e) {
-      console.error('Load relay failed', e);
+      console.error('Load relay failed for actor', actorRelay, e);
+      setRelayUI('auto');
     }
+
     try {
-      const actor = getActor("relay");
-      if (actor) {
-        const sp = await callSetpointApi(actor, "GET");
-        if (sp && typeof sp.value !== 'undefined') setSetpointUI(sp.value);
+      const actorRelay = getActor("relay");
+      if (actorRelay) {
+        const sp = await callSetpointApi(actorRelay, "GET");
+        console.debug('[actuators] Setpoint actor', actorRelay, 'from API', sp);
+        if (sp && typeof sp.value !== 'undefined') {
+          setSetpointUI(sp.value);
+        }
       } else {
-        try {
-          const sp = await fetchWrappedJson(`${API_BASE}/setpoint`);
-          if (sp && typeof sp.value !== 'undefined') setSetpointUI(sp.value);
-        } catch (_) {}
+        setSetpointUI(null);
       }
     } catch (e) {
-      console.error('Load setpoint failed', e);
+      console.error('Load setpoint failed for actor', actorRelay, e);
+      setSetpointUI(null);
     }
   }
 

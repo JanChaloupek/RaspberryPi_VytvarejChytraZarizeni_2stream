@@ -1,33 +1,22 @@
 # api_utils.py
-from flask import Response
-from services.aggregate_service import handle_aggregate
-from services.time_utils import parse_local_key_to_range
+from flask import Response, jsonify
 from typing import Optional, Any, Tuple, Dict
-from collections.abc import Iterable
 import logging
 
 logger = logging.getLogger("api")
 
 def getQueryLogsTail():
-    return {
-        "route": "/api/logs/tail",
-        "method": "GET"
-    }
+    return {"route": "/api/logs/tail", "method": "GET"}
 
 def getQueryDataSensors():
-    return {
-        "route": "/api/sensors",
-        "method": "GET"
-    }
+    return {"route": "/api/sensors", "method": "GET"}
 
-def getQueryDataLatest(sensor_id):
-    return {
-        "route": "/api/latest/<sensor_id>",
-        "method": "GET",
-        "sensor_id": sensor_id,
-    }
+def getQueryDataLatest(sensor_id: str) -> Dict:
+    return {"route": "/api/latest/<sensor_id>", "method": "GET", "sensor_id": sensor_id}
 
-def getQueryDataAggregate(sensor_id, level, key, tz_name, tz_offset, tzinfo=None, start_iso=None, end_iso=None, group_by=None):
+def getQueryDataAggregate(sensor_id: str, level: str, key: str,
+                          tz_name: str, tz_offset: str,
+                          tzinfo=None, start_iso=None, end_iso=None, group_by=None) -> Dict:
     return {
         "route": "/api/aggregate/<sensor_id>/<level>/<key>",
         "method": "GET",
@@ -42,74 +31,42 @@ def getQueryDataAggregate(sensor_id, level, key, tz_name, tz_offset, tzinfo=None
         "group_by": group_by,
     }
 
-def getQueryDataLed(metod: str):
-    return {
-        "route": "/api/actuators/led",
-        "method": metod,
-    }
+def getQueryDataActor(method: str, actor_name: str) -> Dict:
+    return {"route": "/api/actuators/<actor_name>", "actor_name": actor_name, "method": method}
 
-def getQueryDataRelay(metod: str):
-    return {
-        "route": "/api/actuators/relay",
-        "method": metod,
-    }
+def getQueryDataSetpoint(method: str, actor_name: str) -> Dict:
+    return {"route": "/api/actuators/<actor_name>/setpoint", "actor_name": actor_name, "method": method}
 
-def getQueryDataSetpoint(metod: str):
-    return {
-        "route": "/api/actuators/setpoint",
-        "method": metod,
-    }
-
-def log_data(key: str, num, data):
+def log_data(key: str, num: int | bool, data: Any) -> None:
     if isinstance(data, list):
-        # num může být int nebo bool; pokud je True, považuj to za "vypiš vše"
         max_items = None if num is True else int(num)
-        count = 0
-        for item in data:
-            count += 1
-            suffix = ""
-            if max_items is not None and count >= max_items:
-                suffix = "  ..."
+        for count, item in enumerate(data, start=1):
+            suffix = "  ..." if max_items is not None and count >= max_items else ""
             logger.debug(f"      {key}[]{item}{suffix}")
             if max_items is not None and count >= max_items:
                 break
     else:
         logger.debug(f"      {key}{data}")
 
-def make_api_response_error(
-        query: Dict[str, Any],
-        error: Optional[Any],
-        status: int,
-        log: bool | int | str = True,
-    ) -> Tuple:
-    return make_api_response(query, None, error, status, log)
-
-def make_api_response(
-    query: Dict[str, Any],
-    result: Optional[Any] = None,
-    error: Optional[Any] = None,
-    status: int = 200,
-    log: bool | int | str = False,
-) -> Tuple[Response, int]:
-    """
-    Zapouzdří odpověď API do tvaru:
-    {
-      "query": { ... },
-      "result": ...,
-      "error": ...
-    }
-    Vrací (Response, status) vhodné pro Flask route handler.
-    """
-    
+def make_api_response(query: Dict[str, Any],
+                      result: Optional[Any] = None,
+                      error: Optional[Any] = None,
+                      status: int = 200,
+                      log: bool | int | str = False) -> Tuple[Response, int]:
     payload = {"query": query}
     if result is not None:
         if log:
-            log_data("result", log, f"- {log}" if isinstance(log, str) else result)
+            log_data("result", log, result)
         payload["result"] = result
-
     if error is not None:
         if log:
-            log_data("error", log, f"- {log}" if isinstance(log, str) else error)
+            log_data("error", log, error)
         payload["error"] = error
+        logger.error("API error: %s", error)
+    return jsonify(payload), status
 
-    return payload, status
+def make_api_response_error(query: Dict[str, Any],
+                            error: Optional[Any],
+                            status: int,
+                            log: bool | int | str = True) -> Tuple[Response, int]:
+    return make_api_response(query, None, error, status, log)

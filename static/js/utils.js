@@ -1,10 +1,28 @@
 // static/js/utils.js
+export function todayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`; // YYYY-MM-DD
+}
 
 export function isoLocalString(dt) {
   // dt = Date objekt v lokálním čase nebo ISO string parse
   const d = (dt instanceof Date) ? dt : new Date(dt);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+export function translateLevelToCzech(level) {
+  switch (level) {
+    case 'monthly': return 'agreguji měsíce';
+    case 'daily': return 'agreguji dny';
+    case 'hourly': return 'agreguji hodiny';
+    case 'minutely': return 'agreguji minuty';
+    case 'raw': return 'přímá změřená data';
+    default: return level || '';
+  }
 }
 
 // Robustní parser klíče -> Date (lokální)

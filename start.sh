@@ -1,4 +1,7 @@
 #!/bin/bash
+# nastavení title okna
+printf '\033]0;%s\007' "web"
+
 echo "=== Spouštím Flask server na Linux/macOS ==="
 
 # Vytvoření virtuálního prostředí, pokud neexistuje
@@ -18,11 +21,8 @@ if ! pip show flask > /dev/null 2>&1; then
     pip install flask
 fi
 
-
-# Spuštění serveru
-export FLASK_APP=app.py
-export FLASK_ENV=development
-flask run
+echo "Spouštím webovou aplikaci"
+python3 app.py
 
 # Čekání na stisk klávesy
 read -n 1 -s -r -p "Stiskni libovolnou klávesu pro ukončení..."

@@ -65,6 +65,7 @@ export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick =
         e.stopPropagation();
         const childLevel = row.child_level || nextLevel(level) || 'raw';
         const childKey = row.child_key || row.key;
+        console.debug('[table.js] Chevron click', { childLevel, childKey, row });
         if (childKey) onRowClick(childLevel, childKey);
       });
       firstTd.appendChild(btn);
@@ -91,6 +92,7 @@ export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick =
       tr.addEventListener('click', () => {
         const childLevel = row.child_level || nextLevel(level) || 'raw';
         const childKey = row.child_key || row.key;
+        console.debug('[table.js] Row click', { childLevel, childKey, row });
         if (childKey) onRowClick(childLevel, childKey);
       });
     }

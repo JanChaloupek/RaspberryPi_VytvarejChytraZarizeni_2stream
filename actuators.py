@@ -282,7 +282,7 @@ class ActuatorManager:
             try:
                 return float(val)
             except Exception:
-                return 25.0
+                return -99.9
 
     # ---- wrappery pro LED vlastnosti ----
     def set_led_label(self, name: str, label: str, persist: bool = True):

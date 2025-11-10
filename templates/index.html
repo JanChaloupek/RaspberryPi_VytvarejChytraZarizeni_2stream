@@ -1,140 +1,70 @@
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-  <meta charset="UTF-8">
-  <title>Dashboard</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "base.html" %}
 
-  <!-- Bootstrap CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body class="bg-light">
+{% block title %}Dashboard{% endblock %}
+{% block navbar_title %}Dashboard{% endblock %}
 
-<div class="container py-4">
-  <h1 class="mb-4 text-primary">Dashboard</h1>
+{% block head_links %}
+  <!-- Externí knihovny -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+        crossorigin="anonymous">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+        integrity="sha384-Ay26V7L8bsJTsX9Sxclnvsn+hkdiwRnrjZJXqKmkIDobPgIIWBOVguEcQQLDuhfN"
+        crossorigin="anonymous">
 
-  <!-- Výběr senzoru -->
-  <div class="mb-3">
-    <label for="sensor_select" class="form-label fw-bold">Výběr senzoru:</label>
-    <select id="sensor_select" class="form-select w-auto d-inline-block"></select>
-  </div>
+  <!-- Vlastní styly -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/darkmode.css') }}">
 
-  <!-- Actuator controls -->
-  <section id="actuators" class="mb-4" aria-labelledby="actuators-title">
-    <h2 id="actuators-title" class="h5 mb-3">Ovládání aktuátorů</h2>
+  <!-- favikon - světlý režim -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+  <!-- favikon - tmavý režim -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon-dark.png') }}" type="image/png" media="(prefers-color-scheme: dark)">
+{% endblock %}
 
-    <div class="card p-3">
-      <div class="row g-3 align-items-center">
+{% block scripts %}
+  <!-- Externí knihovny -->
+  <script src="https://cdn.plot.ly/plotly-2.24.1.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous"></script>
 
-        <!-- LED -->
-        <div class="col-12 col-md-3">
-          <label class="form-label fw-bold d-block">LED</label>
-          <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="led-toggle" aria-describedby="led-status">
-            <label class="form-check-label" for="led-toggle" id="led-status">Vypnuto</label>
-          </div>
-        </div>
-
-        <!-- Relay -->
-        <div class="col-12 col-md-5">
-          <label class="form-label fw-bold d-block">RELE</label>
-          <div class="btn-group" role="group" aria-label="Relay mode">
-            <button type="button" class="btn btn-outline-success" id="relay-on">Zapnuto</button>
-            <button type="button" class="btn btn-outline-danger" id="relay-off">Vypnuto</button>
-            <button type="button" class="btn btn-outline-primary" id="relay-auto">Termostat</button>
-          </div>
-          <div class="small text-muted mt-1" id="relay-mode" aria-live="polite">Režim: -</div>
-        </div>
-
-        <!-- Setpoint slider -->
-        <div class="col-12 col-md-4">
-          <label for="setpoint" class="form-label fw-bold">Regulovaná teplota</label>
-          <div class="d-flex align-items-center gap-2">
-            <input type="range" class="form-range" min="5" max="40" step="0.5" id="setpoint">
-            <div class="fw-bold ms-2" id="setpoint-value">-- °C</div>
-          </div>
-          <div class="form-text">Regulovaná teplota termostatu</div>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- senzor data -->
-  <section id="senzor-data" class="mb-4" aria-labelledby="senzors-title">
-    <h2 id="actuators-title" class="h5 mb-3">Aktuální stav</h2>
-
-    <div class="card p-3">
-      <div class="row g-3 align-items-center">
-        <!-- Čas měření -->
-        <div id="snapshot-bar" class="snapshot-bar" role="status" aria-live="polite">
-          <div class="snapshot-inner">
-            <span class="snapshot-label">Data ze dne</span>
-            <time id="snapshot-time" class="snapshot-time" datetime=""></time>
-          </div>
-        </div>
-
-        <!-- Gauge ukazatele -->
-        {% import 'components/gauge.html' as comp %}
-
-        <div class="row text-center mb-4">
-          <div class="col-md-6">
-            {{ comp.gauge('tempArc', 'temperature', '°C', 'Teplota') }}
-          </div>
-          <div class="col-md-6">
-            {{ comp.gauge('humArc', 'humidity', '%', 'Vlhkost') }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Historická data -->
-    <h2 class="h5 mt-4">Historická data</h2>
-
-    <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb" id="breadcrumb"></ol>
-    </nav>
-
-    <!-- Interaktivní tabulka -->
-    <div class="table-responsive">
-      <table class="table table-striped table-hover table-bordered align-middle">
-        <thead class="table-light" id="history-head"></thead>
-        <tbody id="history-body"></tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Log viewer -->
-  <section id="log-viewer" class="mb-4" aria-labelledby="logs-title">
-    <h2 id="logs-title" class="h5 mb-3">Prohlížeč logů</h2>
-
-    <div class="card p-3">
-      <div class="d-flex align-items-center mb-2 gap-2">
-        <button id="logs-refresh" class="btn btn-sm btn-outline-primary">Obnovit</button>
-        <div class="form-check form-switch ms-2">
-          <input class="form-check-input" type="checkbox" id="logs-autorefresh">
-          <label class="form-check-label" for="logs-autorefresh">Automatické obnovení (5 s)</label>
-        </div>
-        <div class="ms-auto text-muted small" id="logs-status"></div>
-      </div>
-
-      <div class="border rounded bg-dark text-light p-2" style="font-family: monospace; max-height: 400px; overflow:auto;">
-        <pre id="logs-pre" class="mb-0" aria-live="polite" style="white-space: pre-wrap;"></pre>
-      </div>
-    </div>
-  </section>
-
-  <!-- JavaScript: rozdělené moduly (ES modules) -->
-  <script type="module" src="{{ url_for('static', filename='js/utils.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/api.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/breadcrumb.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/table.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/gauges.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <!-- Vlastní skripty -->
+  <script src="{{ url_for('static', filename='js/theme.js') }}" defer></script>
+  <!-- Modulární logika -->
+  <script type="module" src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+  <script type="module" src="{{ url_for('static', filename='js/plot.js') }}"></script>
   <script type="module" src="{{ url_for('static', filename='js/actuators.js') }}"></script>
-  <script type="module" src="{{ url_for('static', filename='js/logs.js') }}"></script>
-</body>
-</html>
+{% endblock %}
+
+
+{% block sidebar %}
+  {% include "_sidebar.html" %}
+{% endblock %}
+
+{% block navbar_right %}
+  <img src="{{ url_for('static', filename='img/logo.png') }}"
+       alt="Logo organizace" width="24" height="24" class="me-2">
+
+  <button id="theme-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Přepnout motiv">
+    <span class="theme-icon">🌙</span>
+  </button>
+{% endblock %}
+
+{% block content %}
+  {% include "_settings.html" %}
+  {% if role == "admin" %}
+    {% include "actuators/_settings.html" %}
+  {% else %}  
+    {% include "actuators/_status.html" %}
+  {% endif %}  
+  {% include "sensors/_current.html" %}
+  {% include "sensors/_history.html" %}
+  {% if role == "admin" %}
+    {% include "_logs.html" %}
+  {% endif %}  
+{% endblock %}

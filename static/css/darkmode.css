@@ -1,3 +1,12 @@
+/* ============================================================
+   Dark Mode CSS
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy a vzhled komponent pro tmavý režim.
+   - Zajišťuje konzistentní kontrast a čitelnost v celé aplikaci.
+   - Navazuje na base.css a component.css.
+   ============================================================ */
+
 /* === Globální pozadí a text === */
 body.dark-mode {
   background-color: #0b1220;

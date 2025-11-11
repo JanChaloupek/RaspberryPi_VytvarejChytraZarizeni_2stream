@@ -1,0 +1,29 @@
+{# ============================================================
+   Blok: Přihlášený / nepřihlášený uživatel
+   ------------------------------------------------------------
+   Účel:
+   - Pokud je uživatel přihlášen → zobrazí se jeho ID + tlačítko Odhlásit se.
+   - Pokud není přihlášen → zobrazí se "none" + tlačítko Přihlásit se.
+   ============================================================ #}
+
+<div class="mt-auto pt-3">
+  <!-- Informace o uživateli -->
+  <small class="text-muted d-block mb-2">
+    Přihlášen jako:
+    <strong>{{ current_user.id if current_user.is_authenticated else 'none' }}</strong>
+  </small>
+
+  {% if current_user.is_authenticated %}
+    <!-- Odhlášení -->
+    <form action="{{ url_for('logout') }}" method="post" class="d-inline">
+      <button type="submit" class="btn btn-sm btn-outline-danger">
+        <i class="bi bi-box-arrow-right"></i> Odhlásit se
+      </button>
+    </form>
+  {% else %}
+    <!-- Přihlášení -->
+    <a href="{{ url_for('login') }}" class="btn btn-sm btn-outline-primary">
+      <i class="bi bi-box-arrow-in-right"></i> Přihlásit se
+    </a>
+  {% endif %}
+</div>

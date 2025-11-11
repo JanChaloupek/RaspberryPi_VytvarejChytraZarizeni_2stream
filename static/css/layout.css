@@ -1,8 +1,26 @@
-/* === Layout fixes for fixed-top navbar and sidebar === */
+/* ============================================================
+   Layout CSS
+   ------------------------------------------------------------
+   Účel:
+   - Řeší problémy s rozložením při použití fixed-top navbaru
+     a pevného sidebaru.
+   - Zajišťuje správné odsazení hlavního obsahu a sekcí.
+   - Používá root proměnné (např. --navbar-height) z base.css.
+   ============================================================ */
+
+/* === Layout fix: padding pro fixed-top navbar ===
+   Přidává horní odsazení obsahu, aby se neschovával pod navbar.
+   ------------------------------------------------------------ */
 .pt-navbar {
   padding-top: var(--navbar-height);
 }
 
+/* === Sidebar (pevný postranní panel) ===
+   - Umístěn fixně vlevo pod navbar.
+   - Šířka odpovídá ~col-lg-2 (16.666%).
+   - Obsah je scrollovatelný (overflow-y: auto).
+   - Světlé pozadí a oddělující border.
+   ------------------------------------------------------------ */
 .sidebar-fixed {
   position: fixed;
   top: var(--navbar-height);
@@ -14,12 +32,20 @@
   border-right: 1px solid #dee2e6;
 }
 
+/* === Main content offset (desktop) ===
+   Při větších obrazovkách (≥992px) se hlavní obsah
+   odsune doprava o šířku sidebaru.
+   ------------------------------------------------------------ */
 @media (min-width: 992px) {
   main {
     margin-left: 16.666%;
   }
 }
 
+/* === Section scroll margin ===
+   Nastavuje scroll-margin-top pro sekce, aby při navigaci
+   (anchor odkazy) nebyl obsah schovaný pod navbar.
+   ------------------------------------------------------------ */
 section {
   scroll-margin-top: var(--navbar-height);
 }

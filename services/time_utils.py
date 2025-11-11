@@ -1,17 +1,52 @@
 # services/time_utils.py
+"""
+Time utilities
+--------------
+
+Účel:
+- Poskytuje pomocné funkce pro práci s časovými zónami a ISO formáty.
+- Umožňuje převod mezi lokálním časem a UTC.
+- Podporuje dekódování klíčů (např. "2025-11-01") na časové intervaly pro agregace.
+
+Závislosti:
+- datetime, timedelta, timezone (standardní knihovna)
+- zoneinfo.ZoneInfo pro práci s názvy časových zón
+- re pro regulární výrazy
+- logging pro ladicí logování
+
+Hlavní rozhraní:
+- resolve_tz() → vrací timezone objekt podle názvu nebo offsetu
+- parse_local_iso() → převede ISO string na datetime s daným tzinfo
+- to_utc() → převede lokální datetime na UTC
+- to_local_iso_from_utc() → převede UTC datetime na lokální ISO string
+- parse_local_key_to_range() → vrací časový interval a group_by pattern pro agregace
+
+Výstupní formáty:
+- ISO stringy: "%Y-%m-%dT%H:%M:%S"
+- SQLite WHERE podmínky: "%Y-%m-%d %H:%M:%S"
+"""
+
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import re
 import logging
+from typing import Optional, Tuple
 
 logger = logging.getLogger("time_utils")
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S"
 
 
-def resolve_tz(tz_name: str | None, tz_offset: str | None) -> timezone:
+def resolve_tz(tz_name: Optional[str], tz_offset: Optional[str]) -> timezone:
     """
     Vrátí timezone objekt podle názvu nebo offsetu.
+
+    Parametry:
+    - tz_name: název časové zóny (např. "Europe/Prague") nebo None
+    - tz_offset: offset v minutách (string), např. "60" nebo "-120"
+
+    Návratová hodnota:
+    - timezone objekt (ZoneInfo nebo timezone.utc)
     """
     if tz_name:
         try:
@@ -28,12 +63,22 @@ def resolve_tz(tz_name: str | None, tz_offset: str | None) -> timezone:
 
 
 def _is_tz_aware_str(txt: str) -> bool:
+    """
+    Detekuje, zda ISO string obsahuje informaci o časové zóně (Z nebo ±HH[:MM]).
+    """
     return bool(re.search(r'(Z|[+\-]\d{2}(:\d{2})?)$', txt))
 
 
 def parse_local_iso(local_iso: str, tzinfo: timezone) -> datetime:
     """
     Převede ISO string (lokální nebo tz-aware) na datetime s daným tzinfo.
+
+    Parametry:
+    - local_iso: ISO string (např. "2025-11-01T12:00:00")
+    - tzinfo: cílová časová zóna
+
+    Návratová hodnota:
+    - datetime objekt s nastaveným tzinfo
     """
     txt = str(local_iso).replace(" ", "T")
 
@@ -72,21 +117,42 @@ def parse_local_iso(local_iso: str, tzinfo: timezone) -> datetime:
 
 
 def to_utc(dt_local: datetime) -> datetime:
+    """
+    Převede lokální datetime na UTC.
+    """
     return dt_local.astimezone(timezone.utc)
 
 
 def to_local_iso_from_utc(utc_dt: datetime, tzinfo: timezone) -> str:
+    """
+    Převede UTC datetime na lokální ISO string.
+
+    Parametry:
+    - utc_dt: datetime v UTC
+    - tzinfo: cílová časová zóna
+
+    Návratová hodnota:
+    - ISO string "%Y-%m-%dT%H:%M:%S"
+    """
     if utc_dt.tzinfo is None:
         utc_dt = utc_dt.replace(tzinfo=timezone.utc)
     local_dt = utc_dt.astimezone(tzinfo)
     return local_dt.strftime(ISO_FORMAT)
 
 
-def parse_local_key_to_range(level: str, key: str, tzinfo: timezone) -> tuple[str, str, str | None]:
+def parse_local_key_to_range(level: str, key: str, tzinfo: timezone) -> Tuple[str, str, Optional[str]]:
     """
     Vrátí (start_utc_iso, end_utc_iso, group_by_str).
     Start a end jsou ve formátu 'YYYY-%m-%d %H:%M:%S' v UTC (pro SQLite WHERE).
     group_by_str je SQLite strftime pattern nebo None pro raw.
+
+    Parametry:
+    - level: úroveň agregace ("monthly", "daily", "hourly", "minutely", "raw")
+    - key: časový klíč (ISO string)
+    - tzinfo: časová zóna
+
+    Návratová hodnota:
+    - tuple (start_iso: str, end_iso: str, group_by: Optional[str])
     """
     logger.debug("parse_local_key_to_range input: level=%s key=%s tzinfo=%s", level, key, tzinfo)
     local_dt = parse_local_iso(key, tzinfo)
@@ -95,7 +161,6 @@ def parse_local_key_to_range(level: str, key: str, tzinfo: timezone) -> tuple[st
         now = datetime.now(tzinfo)
         year = local_dt.year
         start_local = datetime(year=year, month=1, day=1, tzinfo=tzinfo)
-        # specifická logika: pokud je aktuální měsíc leden–březen, začni předchozí rok
         if now.month in (1, 2, 3):
             start_local = start_local.replace(year=year - 1)
         end_local = start_local.replace(year=start_local.year + 1)

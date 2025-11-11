@@ -1,4 +1,15 @@
-/* === Login page container and card === */
+/* ============================================================
+   Login CSS
+   ------------------------------------------------------------
+   Účel:
+   - Styly pro přihlašovací stránku aplikace.
+   - Obsahuje vzhled kontejneru, karty, formuláře,
+     tlačítka, pomocné odkazy a flash zprávy.
+   ============================================================ */
+
+/* === Login page container and card ===
+   Kontejner centrovaný na stránce a samotná karta s formulářem.
+   ------------------------------------------------------------ */
 .login-container {
   display: flex;
   align-items: center;
@@ -28,7 +39,9 @@
   font-size: 0.95rem;
 }
 
-/* === Form === */
+/* === Form ===
+   Stylování formuláře, labelů a vstupních polí.
+   ------------------------------------------------------------ */
 .login-form {
   display: grid;
   gap: 0.75rem;
@@ -54,7 +67,9 @@
   box-shadow: 0 6px 18px rgba(11,95,255,0.06);
 }
 
-/* === Submit button === */
+/* === Submit button ===
+   Tlačítko pro odeslání přihlášení.
+   ------------------------------------------------------------ */
 .btn-login {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -73,7 +88,9 @@
   outline-offset: 2px;
 }
 
-/* === Actions and helper links === */
+/* === Actions and helper links ===
+   Odkazy pod formulářem (např. zapomenuté heslo).
+   ------------------------------------------------------------ */
 .login-actions {
   display: flex;
   justify-content: space-between;
@@ -91,7 +108,9 @@
   color: #7b8a95;
 }
 
-/* === Flash messages === */
+/* === Flash messages ===
+   Stylování informačních zpráv (success, info, danger).
+   ------------------------------------------------------------ */
 .flash-list {
   margin: 0 0 0.75rem;
   padding: 0;

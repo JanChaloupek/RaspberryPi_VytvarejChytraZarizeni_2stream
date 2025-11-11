@@ -15,11 +15,11 @@ from typing import Optional
 from db import SqlSensorData
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from thermostat import Thermostat
-from actuators import ActuatorManager
+from actuators.manager import ActuatorManager
 from services.time_utils import resolve_tz
 from services.aggregate_service import api_aggregate, compute_dew_point
-from services.api_helper import make_api_response, make_api_response_error, getQueryDataSensors, getQueryDataLatest, getQueryDataAggregate, getQueryLogsTail, getQueryDataSetpoint
-from services.api_func import api_get_logs, api_read_actor_state, api_write_actor_state, api_read_setpoint, api_write_setpoint
+from services.api_utils import make_api_response, make_api_response_error, getQueryDataSensors, getQueryDataLatest, getQueryDataAggregate, getQueryLogsTail, getQueryLed, getQueryRelay, getQueryRelaySetpoint
+from services.api_actuators import api_get_logs, api_read_led, api_write_led, api_read_relay, api_write_relay, api_read_setpoint, api_write_setpoint
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 
 
@@ -87,6 +87,7 @@ def adminNeeded_response(query):
 sensor_map = {
     "DHT11_01": "Vnitřní senzor",
     "DHT11_02": "Venkovní senzor",
+    "DHT11_03": "další který nemám",
 }
 
 @app.context_processor
@@ -115,7 +116,7 @@ def inject_assets():
 @app.route("/")
 @login_required
 def home_page():
-    return render_template("index.html", role=session.get("role"))
+    return render_template("index.jinja", role=session.get("role"))
 
 
 @app.route('/api/me')
@@ -147,10 +148,10 @@ def login():
             return redirect(next_page)
         else:
             flash("Neplatné uživatelské jméno nebo heslo.", "danger")
-            return render_template('login/login.html', username=username)
+            return render_template('login/login.jinja', username=username)
 
     # GET
-    return render_template('login/login.html', username='')
+    return render_template('login/login.jinja', username='')
 
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -213,67 +214,52 @@ def api_aggregate_level(sensor_id, level, key):
     return make_api_response(query, result, log=3)        # loguje maximalne 3 radky dat ziskanych z DB
 
 
-# ---- Actuators API ----
-@app.route('/api/actuators/<actor_name>', methods=['GET', 'POST'])
+@app.route('/api/actuator/<sensor_id>/led', methods=['GET', 'POST'])
 @login_required
-def api_actuator(actor_name):
-    """
-    Podporovaná jména: led_DHT11_01, led_DHT11_02, relay_DHT11_01, relay_DHT11_02
-    GET: {"on": bool, "hw": bool}
-    POST: {"on": bool} -> {"on": bool, "hw": bool}
-    """
-    query = getQueryDataSetpoint(request.method, actor_name)
+def api_led(sensor_id):
+    print("/api/actuator/<sensor_id>/led - 1", sensor_id)
+    query = getQueryLed(sensor_id, request.method)
+    print("/api/actuator/<sensor_id>/led - 2", query, request.method)
+
     if request.method == 'GET':
-        errCode, errMessage, result = api_read_actor_state(act, actor_name)
-        if errCode is not None:
-            # nastala chyba -> zamitava odpoved
-            return make_api_response_error(query, errMessage, errCode)
+        print("/api/actuator/<sensor_id>/led - 3 GET")
+        return api_read_led(act, sensor_id, query)
 
-        # vracim odpoved        
-        return make_api_response(query, result, log=True)
+    # POST    
+    if not is_admin():
+        return adminNeeded_response(query)
 
-    # POST
-    if not is_admin():                      # over prava admina
-        return adminNeeded_response(query)  # pokud je nemas, odpovez ze je potrebujes
+    print("/api/actuator/<sensor_id>/led - 3 PUT")
+    return api_write_led(act, sensor_id, request, query)
 
-    errCode, errMessage, result = api_write_actor_state(act, actor_name, request)
-    if errCode is not None:
-        # nastala chyba -> zamitava odpoved
-        return make_api_response_error(query, errMessage, errCode)
-
-    # vracim odpoved
-    return make_api_response(query, result, log=True)
-
-
-@app.route('/api/actuators/<actor_name>/setpoint', methods=['GET', 'POST'])
+@app.route('/api/actuator/<sensor_id>/relay', methods=['GET', 'POST'])
 @login_required
-def api_actuator_setpoint(actor_name):
-    """
-    Podporovaná jména: relay_DHT11_01, relay_DHT11_02
-    GET: {"value": value}
-    POST: {"value": value} -> {"value": value}
-    """
-    query = getQueryDataSetpoint(request.method, actor_name)
+def api_relay(sensor_id):
+    query = getQueryRelay(sensor_id, request.method)
+    
     if request.method == 'GET':
-        errCode, errMessage, result = api_read_setpoint(act, actor_name)
-        if errCode is not None:
-            # nastala chyba -> zamitava odpoved
-            return make_api_response_error(query, errMessage, errCode)
+        return api_read_relay(act, sensor_id, query)
 
-        # vracim odpoved        
-        return make_api_response(query, result, log=True)
+    # POST    
+    if not is_admin():
+        return adminNeeded_response(query)
 
-    # POST
-    if not is_admin():                      # over prava admina
-        return adminNeeded_response(query)  # pokud je nemas, odpovez ze je potrebujes
+    return api_write_relay(act, sensor_id, request, query)
 
-    errCode, errMessage, result = api_write_setpoint(act, actor_name, request)
-    if errCode is not None:
-        # nastala chyba -> zamitava odpoved
-        return make_api_response_error(query, errMessage, errCode)
 
-    # vracim odpoved
-    return make_api_response(query, result, log=True)
+@app.route('/api/actuator/<sensor_id>/relay/setpoint', methods=['GET', 'POST'])
+@login_required
+def api_relay_setpoint(sensor_id):
+    query = getQueryRelaySetpoint(sensor_id, request.method)
+    
+    if request.method == 'GET':
+        return api_read_setpoint(act, sensor_id, query)
+
+    # POST    
+    if not is_admin():
+        return adminNeeded_response(query)
+    
+    return api_write_setpoint(act, sensor_id, request, query)
 
 
 @app.route('/api/logs/tail', methods=['GET'])
@@ -284,27 +270,45 @@ def api_logs_tail():
     if not is_admin():                      # over prava admina
         return adminNeeded_response(query)  # pokud je nemas, odpovez ze je potrebujes
 
-    errCode, errMessage, result = api_get_logs(LOG_FILE, 200)
-    if errCode is not None:
-        # nastala chyba -> zamitava odpoved
-        return make_api_response_error(query, errMessage, errCode)
-    # vracim odpoved
-    return make_api_response(query, result, log=True)
+    return api_get_logs(LOG_FILE, 200)
 
-
+import signal
+import sys
 
 if __name__ == "__main__":
     logger.info("Run app")
 
-    act = ActuatorManager()
-    act.init_if_needed()
+    # Definice senzorů a jejich HW pinů (pokud nejsou, fungují virtuálně)
+    sensors_config = {
+        "DHT11_01": {"led_pin": 18, "relay_pin": 23},
+        "DHT11_02": {"led_pin": 12, "relay_pin": 24},
+    }
     
+    # Inicializace ActuatorManageru s konfigurací senzorů
+    act = ActuatorManager(sensors=sensors_config)
+
+    # Spuštění termostatu – periodicky kontroluje teploty z DB
     thermostat = Thermostat(act, interval=5, hysteresis=1.0)
     thermostat.start()
 
+    # --- Signal handler pro čisté ukončení ---
+    def handle_sig(signum, frame):
+        logger.info(f"Shutting down (signal {signum})...")
+        thermostat.stop()
+        act.close_all()
+        sys.exit(0)
+
+    # registrace handlerů
+    signal.signal(signal.SIGINT, handle_sig)   # Ctrl+C
+    signal.signal(signal.SIGTERM, handle_sig)  # kill
+
     try:
+        # Flask aplikace
         app.run(debug=True, use_reloader=False)
-#        app.run(debug=False)
+        # app.run(debug=False)   # produkční režim
+    except Exception as e:
+        logger.exception("App crashed: %s", e)
     finally:
+        # fallback – pokud se dostaneme sem, zavři zařízení
         thermostat.stop()
         act.close_all()

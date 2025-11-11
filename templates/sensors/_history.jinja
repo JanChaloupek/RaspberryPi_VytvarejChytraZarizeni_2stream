@@ -1,13 +1,29 @@
 {% from "components/section_heading.jinja" import section_heading %}
 
+{# ============================================================
+   Sekce: Historická data senzorů
+   ------------------------------------------------------------
+   Účel:
+   - Zobrazuje tabulku s historickými záznamy.
+   - Obsahuje breadcrumb navigaci pro orientaci v datech.
+   - Vpravo je graf s možností volby typu (čára, body, sloupce).
+   - Používá makro section_heading pro konzistentní nadpis.
+   ============================================================ #}
+
 <section id="sensors-history" class="mb-4" aria-labelledby="sensors-history-title">
   {{ section_heading("Historická data", icon="bi-clock-history", id="sensors-history-title", level=5, note='<span id="history-note"></span>') }}
 
+  <!-- Breadcrumb navigace
+       - Dynamicky generovaná cesta (např. rok → měsíc → den).
+       - id="breadcrumb" → JS logika doplní položky. -->
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb" id="breadcrumb"></ol>
   </nav>
 
   <div class="row g-3">
+    <!-- Tabulka historických dat
+         - Levý sloupec (col-lg-7).
+         - Hlavička a tělo tabulky se plní dynamicky (id="history-head", id="history-body"). -->
     <div class="col-12 col-lg-7">
       <div class="table-responsive">
         <table class="table table-striped table-hover table-bordered align-middle">
@@ -17,6 +33,11 @@
       </div>
     </div>
 
+    <!-- Graf historických dat
+         - Pravý sloupec (col-lg-5).
+         - Obsahuje kontejner pro graf (id="plot-container").
+         - Legendu (id="plot-legend").
+         - Ovládací prvky: select pro typ grafu + tlačítko Obnovit. -->
     <div class="col-12 col-lg-5">
       <div class="card p-3">
         <div class="d-flex align-items-center mb-2">

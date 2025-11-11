@@ -9,42 +9,15 @@
 // - Sleduje DOM pro případ, že main.js nahradí <select> se senzory.
 //
 // Závislosti:
-// - helpers.js (qs, getQueryParam, actorForSensor, fetchWrappedJson)
-// - actuatorsApi.js (callActorApi, callSetpointApi)
+// - helpers.js (qs, fetchWrappedJson) – qs pro výběr prvků
+// - actuatorsApi.js (callLedApi, callRelayApi, callRelaySetpointApi) – vrací čistý result
 // - actuatorsUI.js (setLedUI, setRelayUI, setSetpointUI)
-//
-// Konfigurace:
-// - API_BASE = '/api/actuators' (základní cesta pro REST API)
-//
-// Funkce:
-// - init() → hlavní inicializace UI, binding událostí, načtení stavu.
-// - currentSensorId() → vrací ID aktuálně vybraného senzoru (s ohledem na query param).
-// - getActor(kind) → mapuje senzor na konkrétní aktuátor (LED/relay).
-// - loadForCurrentSensor() → načte stav LED, relé a setpoint pro aktuální senzor.
-// - setRelayMode(mode) → nastaví režim relé (on/off/auto) s fallbackem při chybě.
-// - sendSetpoint(value) → odešle hodnotu setpointu na server, s fallbackem při chybě.
-// - DOM event listenery: změna LED, kliknutí na tlačítka relé, posun slideru setpoint.
-// - MutationObserver → sleduje DOM pro případ nahrazení <select> se senzory a rebinding.
-//
 // ----------------------------------------------------
 
-import { qs, getQueryParam, actorForSensor, fetchWrappedJson } from './helpers.js';
-import { callActorApi, callSetpointApi } from './actuatorsApi.js';
+import { qs } from './helpers.js';
+import { callLedApi, callRelayApi, callRelaySetpointApi } from './actuatorsApi.js';
 import { setLedUI, setRelayUI, setSetpointUI } from './actuatorsUI.js';
 
-const API_BASE = '/api/actuators';
-
-/**
- * init()
- * ----------------------------------------------------
- * Hlavní inicializační funkce modulu.
- * - Najde potřebné DOM prvky (LED toggle, relay buttons, setpoint slider).
- * - Ověří existenci <select> se senzory (id "sensor_select"); bez něj se UI aktuátorů vypne.
- * - Načte stav aktuátorů pro aktuální senzor a připojí event listenery.
- * - Spustí MutationObserver pro sledování případné výměny <select> v DOM (např. main.js).
- *
- * @returns {Promise<void>}
- */
 async function init() {
   const ledToggle = qs('led-toggle');
   const ledStatus = qs('led-status');
@@ -55,244 +28,206 @@ async function init() {
   const setpoint = qs('setpoint');
   const setpointValue = qs('setpoint-value');
 
+
   let sensorSelect = qs('sensor_select');
   if (!sensorSelect) {
     console.error('actuators.js: required select with id "sensor_select" not found in DOM. Actuator UI disabled.');
     return;
   }
 
-  /**
-   * currentSensorId()
-   * ----------------------------------------------------
-   * Vrací ID aktuálně vybraného senzoru z <select>.
-   * - Pokud je v URL query param "actor" (override), vrací null (mapování aktuátoru je řízeno override).
-   *
-   * @returns {string|null} ID senzoru nebo null při override
-   */
   function currentSensorId() {
-    const override = getQueryParam('actor');
-    if (override) return null;
-    return sensorSelect.value || null;
+    const v = sensorSelect.value || null;
+    return v;
   }
 
-  /**
-   * getActor(kind)
-   * ----------------------------------------------------
-   * Vrátí identifikátor aktuátoru dle aktuálního senzoru a typu aktuátoru.
-   * - Umožňuje override přes query param "actor".
-   *
-   * @param {('led'|'relay')} [kind="led"] Typ aktuátoru
-   * @returns {string|null} Identifikátor aktuátoru (např. "/api/actuators/relay/xyz") nebo null
-   */
-  function getActor(kind = "led") {
-    const override = getQueryParam('actor');
-    const sid = currentSensorId();
-    return actorForSensor(sid, kind, override);
-  }
+  let spTimer = null;
 
-  /**
-   * loadForCurrentSensor()
-   * ----------------------------------------------------
-   * Načte a nastaví UI stav pro LED, relé a setpoint podle aktuálního senzoru.
-   * - Každá část je samostatně chráněna try/catch, aby chyba jednoho aktuátoru nezablokovala ostatní.
-   * - Při nedostupném aktuátoru nebo chybě nastaví bezpečný default (LED off, relay auto, setpoint null).
-   *
-   * @returns {Promise<void>}
-   */
   async function loadForCurrentSensor() {
-    // LED
-    try {
-      const actorLed = getActor("led");
-      if (actorLed) {
-        const ledState = await callActorApi(actorLed, "GET");
-        if (ledState && typeof ledState.on !== 'undefined') {
-          setLedUI(ledState.on, ledStatus, ledToggle);
-        }
-      } else {
-        setLedUI(false, ledStatus, ledToggle);
-      }
-    } catch {
-      setLedUI(false, ledStatus, ledToggle);
+    const sid = currentSensorId();
+
+    if (spTimer) {
+      clearTimeout(spTimer);
+      spTimer = null;
     }
 
-    // Relay mode
+    // LED
     try {
-      const actorRelay = getActor("relay");
-      if (actorRelay) {
-        const relayState = await callActorApi(actorRelay, "GET");
-        if (relayState && relayState.mode) {
-          setRelayUI(relayState.mode, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+      if (sid) {
+        const ledState = await callLedApi(sid, "GET"); // čistý result
+        if (ledState && typeof ledState.logical !== 'undefined') {
+          setLedUI(ledState.logical, ledState.hw, ledStatus, ledToggle);
+        } else {
+          console.warn('[LED] Missing logical in result, applying fallback UI');
+          setLedUI(false, null, ledStatus, ledToggle);
         }
       } else {
-        setRelayUI('auto', relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+        setLedUI(false, null, ledStatus, ledToggle);
       }
-    } catch {
-      setRelayUI('auto', relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+    } catch (err) {
+      console.error('[LED] Error loading state:', err);
+      setLedUI(false, null, ledStatus, ledToggle);
+    }
+
+    // Relay
+    try {
+      if (sid) {
+        const relayState = await callRelayApi(sid, "GET"); // čistý result
+        if (relayState && typeof relayState.mode !== 'undefined') {
+          setRelayUI(relayState.mode, relayState.logical, relayState.hw,
+                     relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+        } else {
+          console.warn('[Relay] Missing mode in result, applying fallback UI');
+          setRelayUI('auto', false, null, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+        }
+      } else {
+        setRelayUI('auto', false, null, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+      }
+    } catch (err) {
+      console.error('[Relay] Error loading state:', err);
+      setRelayUI('auto', false, null, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
     }
 
     // Setpoint
     try {
-      const actorRelay = getActor("relay");
-      if (actorRelay) {
-        const sp = await callSetpointApi(actorRelay, "GET");
-        if (sp && typeof sp.value !== 'undefined') {
-          setSetpointUI(sp.value, setpointValue, setpoint);
+      if (sid) {
+        const sp = await callRelaySetpointApi(sid, "GET"); // čistý result
+        if (sp && typeof sp.value !== 'undefined' && sp.value !== null) {
+          const v = Number(sp.value);
+          setSetpointUI(v, setpointValue, setpoint);
+        } else {
+          console.warn('[Setpoint] value missing/null, applying UI null');
+          setSetpointUI(null, setpointValue, setpoint);
         }
       } else {
         setSetpointUI(null, setpointValue, setpoint);
       }
-    } catch {
+    } catch (err) {
+      console.error('[Setpoint] Error loading state:', err);
       setSetpointUI(null, setpointValue, setpoint);
+    }
+  }
+
+  // LED toggle listener
+  ledToggle?.addEventListener('change', async (ev) => {
+    const on = ev.target.checked;
+    setLedUI(on, null, ledStatus, ledToggle); // optimistický update
+    try {
+      const sid = currentSensorId();
+      if (!sid) throw new Error("No sensor selected");
+
+      const postState = await callLedApi(sid, "POST", { on }); // čistý result
+
+      const ledState = await callLedApi(sid, "GET"); // čistý result
+      if (ledState && typeof ledState.logical !== 'undefined') {
+        setLedUI(ledState.logical, ledState.hw, ledStatus, ledToggle);
+      } else {
+        console.warn('[LED] GET after POST missing logical, reverting UI');
+        setLedUI(!on, null, ledStatus, ledToggle);
+      }
+    } catch (err) {
+      console.error('[LED] Error changing state:', err);
+      setLedUI(!on, null, ledStatus, ledToggle);
+      alert('Chyba: nelze změnit stav LED');
+    }
+  });
+
+  // Relay mode listener
+  async function setRelayMode(mode) {
+    const prev = relayModeText ? relayModeText.textContent : '';
+    setRelayUI(mode, false, null, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+    try {
+      const sid = currentSensorId();
+      if (!sid) throw new Error("No sensor selected");
+      const postState = await callRelayApi(sid, "POST", { mode }); // čistý result
+
+      const relayState = await callRelayApi(sid, "GET"); // čistý result
+      if (relayState && typeof relayState.mode !== 'undefined') {
+        setRelayUI(relayState.mode, relayState.logical, relayState.hw,
+                  relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
+      } else {
+        console.warn('[Relay] GET after POST missing mode, restoring prev text');
+        if (relayModeText) relayModeText.textContent = prev;
+      }
+    } catch (err) {
+      console.error('[Relay] Error changing mode:', err);
+      if (relayModeText) relayModeText.textContent = prev;
+      alert('Chyba: nelze změnit režim relé');
+      await loadForCurrentSensor();
+    }
+  }
+
+  relayOnBtn?.addEventListener('click', () => setRelayMode('on'));
+  relayOffBtn?.addEventListener('click', () => setRelayMode('off'));
+  relayAutoBtn?.addEventListener('click', () => setRelayMode('auto'));
+
+  // Setpoint slider listener
+  if (setpoint) {
+    setpoint.addEventListener('input', (e) => {
+      const v = Number(e.target.value);
+      if (!Number.isFinite(v)) {
+        console.warn('[Setpoint] input not finite, ignore');
+        return;
+      }
+      if (setpointValue) setpointValue.textContent = `${v} °C`;
+      if (spTimer) {
+        clearTimeout(spTimer);
+      }
+      spTimer = setTimeout(() => {
+        sendSetpoint(v);
+      }, 600);
+    });
+  }
+
+  async function sendSetpoint(value) {
+    const prev = setpoint ? setpoint.value : null;
+    try {
+      const sid = currentSensorId();
+      if (sid) {
+        const postState = await callRelaySetpointApi(sid, "POST", { value: parseFloat(value) }); // čistý result
+
+        const sp = await callRelaySetpointApi(sid, "GET"); // čistý result
+        if (sp && typeof sp.value !== 'undefined' && sp.value !== null) {
+          const v = Number(sp.value);
+          setSetpointUI(v, setpointValue, setpoint);
+        } else {
+          console.warn('[Setpoint] GET after POST missing/null value, keeping prev');
+          if (setpoint) setpoint.value = prev;
+        }
+      } else {
+        console.warn('[Setpoint] sendSetpoint without sensor, skipping');
+      }
+    } catch (err) {
+      console.error('[Setpoint] Error saving setpoint:', err);
+      alert('Chyba: nelze uložit setpoint');
+      if (setpoint) setpoint.value = prev;
+      await loadForCurrentSensor();
     }
   }
 
   await loadForCurrentSensor();
 
-  // LED toggle
-  if (ledToggle) {
-    /**
-     * Event listener: změna stavu LED přepínače.
-     * - Optimisticky aktualizuje UI dle nové hodnoty.
-     * - Odešle změnu na API; při chybě vrátí UI zpět a upozorní uživatele.
-     *
-     * @param {Event} ev Change event z checkboxu
-     */
-    ledToggle.addEventListener('change', async (ev) => {
-      const on = ev.target.checked;
-      setLedUI(on, ledStatus, ledToggle);
-      try {
-        const actor = getActor("led");
-        if (!actor) throw new Error("No actor mapped for selected sensor");
-        await callActorApi(actor, "POST", { on });
-      } catch {
-        setLedUI(!on, ledStatus, ledToggle);
-        alert('Chyba: nelze změnit stav LED');
-      }
-    });
-  }
-
-  /**
-   * setRelayMode(mode)
-   * ----------------------------------------------------
-   * Nastaví režim relé (on/off/auto) s optimistickou aktualizací UI.
-   * - Při chybě obnoví předchozí zobrazený režim, zobrazí alert a pokusí se znovu načíst stav relé.
-   *
-   * @param {('on'|'off'|'auto')} mode Nový režim relé
-   * @returns {Promise<void>}
-   */
-  async function setRelayMode(mode) {
-    const prev = relayModeText ? relayModeText.textContent : '';
-    setRelayUI(mode, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
-    try {
-      const actor = getActor("relay");
-      if (!actor) throw new Error("No relay mapped for selected sensor");
-      await callActorApi(actor, "POST", { mode });
-    } catch {
-      if (relayModeText) relayModeText.textContent = prev;
-      alert('Chyba: nelze změnit režim relé');
-      try {
-        const actor = getActor("relay");
-        if (actor) {
-          const s = await callActorApi(actor, "GET");
-          if (s && s.mode) setRelayUI(s.mode, relayModeText, relayOnBtn, relayOffBtn, relayAutoBtn);
-        }
-      } catch {}
-    }
-  }
-  // Relay buttons listeners
-  relayOnBtn?.addEventListener('click', () => setRelayMode('on'));
-  relayOffBtn?.addEventListener('click', () => setRelayMode('off'));
-  relayAutoBtn?.addEventListener('click', () => setRelayMode('auto'));
-
-  // Setpoint slider
-  let spTimer = null;
-  if (setpoint) {
-    /**
-     * Event listener: vstup setpoint slideru.
-     * - Aktualizuje zobrazenou hodnotu.
-     * - Používá debounce 600 ms k omezení počtu POST požadavků.
-     *
-     * @param {Event} e Input event ze slideru
-     */
-    setpoint.addEventListener('input', (e) => {
-      const v = parseFloat(e.target.value);
-      if (setpointValue) setpointValue.textContent = `${v} °C`;
-      if (spTimer) clearTimeout(spTimer);
-      spTimer = setTimeout(() => sendSetpoint(v), 600);
-    });
-  }
-
-  /**
-   * sendSetpoint(value)
-   * ----------------------------------------------------
-   * Odešle novou hodnotu setpointu na server.
-   * - Preferuje mapovaný relay-actor; pokud není, použije fallback endpoint `${API_BASE}/setpoint`.
-   * - Při chybě upozorní uživatele a pokusí se obnovit UI načtením skutečné hodnoty ze serveru.
-   * - Pokud obnova selže, vrátí slider na předchozí hodnotu.
-   *
-   * @param {number|string} value Hodnota setpointu (°C)
-   * @returns {Promise<void>}
-   */
-  async function sendSetpoint(value) {
-    const prev = setpoint ? setpoint.value : null;
-    try {
-      const actor = getActor("relay");
-      if (actor) {
-        await callSetpointApi(actor, "POST", { value: parseFloat(value) });
-      } else {
-        await fetchWrappedJson(`${API_BASE}/setpoint`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ value: parseFloat(value) })
-        });
-      }
-    } catch {
-      alert('Chyba: nelze uložit setpoint');
-      try {
-        const actor = getActor("relay");
-        if (actor) {
-          const s = await callSetpointApi(actor, "GET");
-          if (s && typeof s.value !== 'undefined') {
-            setSetpointUI(s.value, setpointValue, setpoint);
-          } else if (setpoint) {
-            setpoint.value = prev;
-          }
-        } else {
-          const s = await fetchWrappedJson(`${API_BASE}/setpoint`);
-          if (s && typeof s.value !== 'undefined') {
-            setSetpointUI(s.value, setpointValue, setpoint);
-          } else if (setpoint) {
-            setpoint.value = prev;
-          }
-        }
-      } catch {
-        if (setpoint) setpoint.value = prev;
-      }
-    }
-  }
-
-  /**
-   * Event listener: změna vybraného senzoru v <select>.
-   * - Po změně senzoru znovu načte stavy aktuátorů pro nově vybraný senzor.
-   */
   sensorSelect.addEventListener('change', async () => {
+    if (spTimer) {
+      clearTimeout(spTimer);
+      spTimer = null;
+    }
     await loadForCurrentSensor();
   });
 
-  /**
-   * MutationObserver pro sledování DOM
-   * ----------------------------------------------------
-   * Sleduje dokument pro případ, že hlavní logika (např. main.js) nahradí element <select id="sensor_select">.
-   * - Při detekci nového selectu provede rebinding event listeneru a okamžité načtení stavů.
-   */
   const observer = new MutationObserver((mutations) => {
     for (const m of mutations) {
       if (m.type === 'childList') {
         const newSelect = qs('sensor_select');
         if (newSelect && newSelect !== sensorSelect) {
           sensorSelect = newSelect;
-          sensorSelect.addEventListener('change', async () => { await loadForCurrentSensor(); });
-          loadForCurrentSensor().catch(e => console.error(e));
+          sensorSelect.addEventListener('change', async () => {
+            if (spTimer) {
+              clearTimeout(spTimer);
+              spTimer = null;
+            }
+            await loadForCurrentSensor();
+          });
+          loadForCurrentSensor().catch(e => console.error('[Observer] initial load error', e));
         }
       }
     }
@@ -300,19 +235,5 @@ async function init() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
-/**
- * document.addEventListener('DOMContentLoaded', init)
- * ----------------------------------------------------
- * Registruje inicializaci modulu po kompletním načtení DOMu.
- * - Zajišťuje, že selektory a UI prvky existují při startu logiky.
- */
 document.addEventListener('DOMContentLoaded', init);
-
-/**
- * export default {}
- * ----------------------------------------------------
- * Exportuje prázdný objekt jako default export.
- * - Umožňuje konzistentní import modulu i tam, kde se očekává default export.
- * - Nezpřístupňuje žádné runtime API; modul se inicializuje přes DOMContentLoaded.
- */
 export default {};

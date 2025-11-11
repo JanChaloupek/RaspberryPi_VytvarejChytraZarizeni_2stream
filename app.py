@@ -17,7 +17,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from thermostat import Thermostat
 from actuators import ActuatorManager
 from services.time_utils import resolve_tz
-from services.aggregate_service import api_aggregate
+from services.aggregate_service import api_aggregate, compute_dew_point
 from services.api_helper import make_api_response, make_api_response_error, getQueryDataSensors, getQueryDataLatest, getQueryDataAggregate, getQueryLogsTail, getQueryDataSetpoint
 from services.api_func import api_get_logs, api_read_actor_state, api_write_actor_state, api_read_setpoint, api_write_setpoint
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
@@ -181,10 +181,16 @@ def api_latest(sensor_id):
     with SqlSensorData() as db:
         data = db.get_current(sensor_id)
 
+    if data:
+        d = dict(data)
+        d["dew_point"] = compute_dew_point(d.get("temperature"), d.get("humidity"))
+    else:
+        d = {}
+
     return make_api_response(
         getQueryDataLatest(sensor_id),
-        dict(data) if data else {},
-        log=True,                   # loguje tento pozadavek
+        d,
+        log=True,
     )
 
 

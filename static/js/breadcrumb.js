@@ -1,11 +1,55 @@
 // static/js/breadcrumb.js
+// Modul pro vykreslení navigační cesty (breadcrumb) podle časového klíče.
+// ----------------------------------------------------
+// Účel:
+// - Generuje breadcrumb navigaci pro časové úrovně (rok, měsíc, den, hodina, minuta).
+// - Umožňuje uživateli přecházet mezi různými úrovněmi detailu dat.
+// - Poskytuje vizuální oddělovače mezi jednotlivými úrovněmi.
+// - Podporuje navigaci zpět na "Home" (dnešní den).
+//
+// Závislosti:
+// - Používá pouze nativní DOM API.
+// - Ikona "Home" využívá Bootstrap Icons (`bi bi-house`).
+//
+// Funkce:
+// - el(html) → vytvoří DOM element z HTML stringu.
+// - makeCrumbLink(label, levelName, keyStr, isActive, onNavigate)
+//   → Vytvoří položku breadcrumb (klikací nebo neaktivní).
+// - addSeparator(ol) → vloží vizuální oddělovač "›" mezi položky.
+// - formatPartsFromKey(key) → rozparsuje časový klíč (YYYY, YYYY-MM, YYYY-MM-DD, …) na části.
+// - renderBreadcrumb(container, level, key, onNavigate)
+//   → Vykreslí kompletní breadcrumb navigaci do zadaného kontejneru.
+//
+// ----------------------------------------------------
 
+/**
+ * el()
+ * ----------------------------------------------------
+ * Vytvoří DOM element z HTML stringu.
+ *
+ * @param {string} html HTML kód
+ * @returns {HTMLElement} První element z template
+ */
 function el(html) {
   const template = document.createElement('template');
   template.innerHTML = html.trim();
   return template.content.firstChild;
 }
 
+/**
+ * makeCrumbLink()
+ * ----------------------------------------------------
+ * Vytvoří položku breadcrumb (li).
+ * - Pokud je položka aktivní, renderuje se jako neklikatelné <span>.
+ * - Pokud není aktivní, renderuje se jako <a> s event listenerem.
+ *
+ * @param {string} label Textový popisek položky
+ * @param {string} levelName Úroveň (monthly, daily, hourly, minutely, raw)
+ * @param {string} keyStr Klíč (např. "2025-11-11")
+ * @param {boolean} isActive True = poslední aktivní položka
+ * @param {function} onNavigate Callback pro navigaci
+ * @returns {HTMLLIElement} Element <li> s obsahem
+ */
 function makeCrumbLink(label, levelName, keyStr, isActive, onNavigate) {
   const li = document.createElement('li');
   li.className = 'breadcrumb-item' + (isActive ? ' active' : '');
@@ -35,6 +79,13 @@ function makeCrumbLink(label, levelName, keyStr, isActive, onNavigate) {
   return li;
 }
 
+/**
+ * addSeparator()
+ * ----------------------------------------------------
+ * Přidá vizuální oddělovač "›" mezi položky breadcrumb.
+ *
+ * @param {HTMLElement} ol Kontejner breadcrumb (např. <ol>)
+ */
 function addSeparator(ol) {
   const sep = document.createElement('span');
   sep.className = 'breadcrumb-sep';
@@ -42,9 +93,17 @@ function addSeparator(ol) {
   ol.appendChild(sep);
 }
 
+/**
+ * formatPartsFromKey()
+ * ----------------------------------------------------
+ * Rozparsuje časový klíč na jednotlivé části.
+ * - Podporované formáty: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS
+ * - Vrací objekt { year, month, day, hour, minute }.
+ *
+ * @param {string} key Časový klíč
+ * @returns {{year:string|null, month:string|null, day:string|null, hour:string|null, minute:string|null}}
+ */
 function formatPartsFromKey(key) {
-  // key expected forms: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS
-  // return object { year, month, day, hour, minute }
   const parts = { year: null, month: null, day: null, hour: null, minute: null };
   if (!key) return parts;
   const t = String(key).replace(' ', 'T');
@@ -62,6 +121,7 @@ function formatPartsFromKey(key) {
   return parts;
 }
 
+// Mapování úrovní na segmenty klíče
 const LEVEL_TO_SEGMENTS = {
   monthly: ['year'],
   daily: ['year','month'],
@@ -70,6 +130,19 @@ const LEVEL_TO_SEGMENTS = {
   raw: ['year','month','day','hour','minute']
 };
 
+/**
+ * renderBreadcrumb()
+ * ----------------------------------------------------
+ * Vykreslí breadcrumb navigaci do zadaného kontejneru.
+ * - Vždy začíná položkou "Home" (ikona domu).
+ * - Podle úrovně (level) a klíče (key) generuje jednotlivé části (rok, měsíc, den, hodina, minuta).
+ * - Aktivní položka se renderuje jako neklikatelné <span>.
+ *
+ * @param {HTMLElement} container Kontejner breadcrumb (např. <ol>)
+ * @param {string} level Úroveň detailu ("monthly","daily","hourly","minutely","raw")
+ * @param {string} key Časový klíč (např. "2025-11-11T12:30")
+ * @param {function} onNavigate Callback pro navigaci při kliknutí
+ */
 export function renderBreadcrumb(container, level, key, onNavigate) {
   container.innerHTML = '';
 

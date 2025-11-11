@@ -13,13 +13,17 @@
       </div>
 
       <div class="row text-center mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
           {{ gauge('tempArc', 'temperature', '°C', 'Teplota') }}
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           {{ gauge('humArc', 'humidity', '%', 'Vlhkost') }}
         </div>
+        <div class="col-md-4">
+          {{ gauge('dewArc', 'dew_point', '°C', 'Rosný bod') }}
+        </div>
       </div>
+
     </div>
   </div>
 </section>

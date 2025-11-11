@@ -1,14 +1,40 @@
 // static/js/snapshot.js
+// Modul pro zobrazení snapshotu času na dashboardu.
+// ----------------------------------------------------
+// Účel:
+// - Přijímá ISO časový string z backendu.
+// - Převádí ho na formát vhodný pro české zobrazení (pomocí utils.js).
+// - Aktualizuje obsah elementu <span id="snapshot-time">.
+// - Nastavuje atribut `datetime` pro strojově čitelné zpracování.
+//
+// Závislosti:
+// - utils.js (formatKeyForCzechDisplay)
+//
+// Použití:
+// - Volá se při načtení nebo aktualizaci dat z backendu,
+//   aby se uživateli zobrazil aktuální čas snapshotu.
+
 import { formatKeyForCzechDisplay } from './utils.js';
 
+/**
+ * updateSnapshotFromIso(isoString)
+ * ----------------------------------------------------
+ * Aktualizuje element #snapshot-time podle ISO stringu.
+ * - Pokud element neexistuje, funkce se ukončí.
+ * - Pokusí se převést ISO string na Date.
+ * - Vytvoří normalizovaný klíč ve tvaru YYYY-MM-DDTHH:mm:ss.
+ * - Pomocí formatKeyForCzechDisplay() zobrazí čas v českém formátu.
+ * - Nastaví atribut `datetime` na validní ISO, pokud je parsovatelný.
+ * - Pokud parsování selže, atribut `datetime` se odstraní.
+ *
+ * @param {string} isoString - ISO časový řetězec z backendu
+ */
 export function updateSnapshotFromIso(isoString) {
   const tEl = document.getElementById('snapshot-time');
   if (!tEl) return;
-  // Pokud backend posílá ISO s offsetem, necháme Date to parsenout
+
+  // Vytvoříme klíč vhodný pro parseLocalKey v utils.js
   const dateKey = (() => {
-    // chceme string ve tvaru vhodném pro parseLocalKey v utils.js
-    // pokud už posíláš přesný key (např. '2025-10-27T21:29:49'), použij ho přímo
-    // jinak vytvoříme ISO bez milisekund
     try {
       const d = new Date(isoString);
       if (isNaN(d.getTime())) return isoString;
@@ -19,14 +45,18 @@ export function updateSnapshotFromIso(isoString) {
     }
   })();
 
-  // Formátujeme čas 
+  // Formátujeme čas pro zobrazení
   const formatted = formatKeyForCzechDisplay(dateKey, 'raw'); 
   tEl.textContent = formatted;
-  // nastavíme strojově čitelný atribut
+
+  // Nastavíme strojově čitelný atribut datetime
   try {
     const dt = new Date(isoString);
-    if (!isNaN(dt.getTime())) tEl.setAttribute('datetime', dt.toISOString());
-    else tEl.removeAttribute('datetime');
+    if (!isNaN(dt.getTime())) {
+      tEl.setAttribute('datetime', dt.toISOString());
+    } else {
+      tEl.removeAttribute('datetime');
+    }
   } catch (e) {
     tEl.removeAttribute('datetime');
   }

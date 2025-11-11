@@ -1,9 +1,30 @@
 // static/js/table.js
-// Renders historical aggregate table.
-// Exports renderTable(tableRoot, rows, level, onRowClick)
+// Modul pro vykreslení historické tabulky agregovaných dat.
+// ----------------------------------------------------
+// Účel:
+// - Vykresluje tabulku s časovými agregacemi (hodinové, denní, atd.).
+// - Zobrazuje sloupce: Čas, Teplota, Vlhkost, Rosný bod, Počet.
+// - Podporuje drill-down (rozkliknutí na detailnější úroveň).
+// - Exportuje funkci renderTable(tableRoot, rows, level, onRowClick).
+//
+// Závislosti:
+// - utils.js (formatKeyForCzechDisplay, nextLevel)
+//
+// Exportované funkce:
+// - renderTable(tableRoot, rows, level, onRowClick)
 
 import { formatKeyForCzechDisplay, nextLevel } from './utils.js';
 
+/**
+ * makeCell(tag, className, content)
+ * ----------------------------------------------------
+ * Vytvoří HTML buňku (td/th).
+ * - tag: typ elementu (default 'td').
+ * - className: CSS třída (volitelné).
+ * - content: text nebo Node, který se vloží do buňky.
+ *
+ * @returns {HTMLElement} vytvořený element
+ */
 function makeCell(tag = 'td', className = '', content = '') {
   const el = document.createElement(tag);
   if (className) el.className = className;
@@ -12,6 +33,15 @@ function makeCell(tag = 'td', className = '', content = '') {
   return el;
 }
 
+/**
+ * makeChevronButton()
+ * ----------------------------------------------------
+ * Vytvoří tlačítko s chevronem (›) pro drill-down.
+ * - Používá se v prvním sloupci tabulky.
+ * - Má ARIA atributy pro přístupnost.
+ *
+ * @returns {HTMLButtonElement} tlačítko
+ */
 function makeChevronButton() {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -22,11 +52,37 @@ function makeChevronButton() {
   return btn;
 }
 
+/**
+ * formatNumber(v, digits)
+ * ----------------------------------------------------
+ * Naformátuje číslo na pevný počet desetinných míst.
+ * - Pokud je hodnota null/undefined/NaN, vrátí '--'.
+ *
+ * @param {number} v - hodnota
+ * @param {number} digits - počet desetinných míst (default 2)
+ * @returns {string} formátovaný text
+ */
 function formatNumber(v, digits = 2) {
   if (v === null || v === undefined || Number.isNaN(Number(v))) return '--';
   return Number(v).toFixed(digits);
 }
 
+/**
+ * renderTable(tableRoot, rows, level, onRowClick)
+ * ----------------------------------------------------
+ * Vykreslí tabulku s historickými agregovanými daty.
+ * - tableRoot: element <table>, do kterého se vykreslí obsah.
+ * - rows: pole objektů s daty (key/time, temperature, humidity, dew_point, count).
+ * - level: aktuální úroveň agregace ('hourly', 'daily', 'raw'…).
+ * - onRowClick: callback pro drill-down (childLevel, childKey).
+ *
+ * Funkce:
+ * - Vytvoří hlavičku tabulky.
+ * - Pro každý řádek vykreslí buňky s daty.
+ * - Pokud je řádek drillovatelný (má child_key/child_level nebo count > 0),
+ *   přidá chevron a nastaví click handler.
+ * - Časový klíč se formátuje pomocí formatKeyForCzechDisplay().
+ */
 export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick = null) {
   if (!tableRoot) return;
   tableRoot.innerHTML = '';
@@ -38,6 +94,7 @@ export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick =
   thr.appendChild(makeCell('th', '', 'Čas'));
   thr.appendChild(makeCell('th', '', 'Teplota'));
   thr.appendChild(makeCell('th', '', 'Vlhkost'));
+  thr.appendChild(makeCell('th', '', 'Rosný bod'));
   thr.appendChild(makeCell('th', '', 'Počet'));
   thead.appendChild(thr);
   tableRoot.appendChild(thead);
@@ -83,12 +140,14 @@ export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick =
     // Humidity
     tr.appendChild(makeCell('td', '', formatNumber(row.humidity, 2)));
 
+    // Dew point
+    tr.appendChild(makeCell('td', '', formatNumber(row.dew_point, 2)));
+
     // Count
     tr.appendChild(makeCell('td', '', (Number.isFinite(Number(row.count)) ? String(row.count) : '--')));
 
     // Row click handler (body) if drillable
     if (canDrill) {
-      // rely on .clickable-row CSS for cursor; avoid inline styles
       tr.addEventListener('click', () => {
         const childLevel = row.child_level || nextLevel(level) || 'raw';
         const childKey = row.child_key || row.key;

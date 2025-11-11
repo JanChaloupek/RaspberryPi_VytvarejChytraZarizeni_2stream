@@ -2,14 +2,30 @@
 from datetime import datetime, timezone
 from services.time_utils import resolve_tz, parse_local_key_to_range, to_local_iso_from_utc
 from db import SqlSensorData
+import math
 
 def _round2(value):
     return round(value, 2) if value is not None else None
+
+def compute_dew_point(temp_c, humidity):
+    """
+    Výpočet rosného bodu (°C) z teploty a relativní vlhkosti.
+    Vrací None pokud vstupy nejsou validní.
+    """
+    if temp_c is None or humidity is None:
+        return None
+    try:
+        a, b = 17.27, 237.7
+        gamma = (a * temp_c) / (b + temp_c) + math.log(humidity / 100.0)
+        return round((b * gamma) / (a - gamma), 2)
+    except Exception:
+        return None
 
 def _normalize_aggregated_row(row, tzinfo):
     """
     Převod tvaru vráceného z get_aggregated na požadované výstupní sloupce
     a zaokrouhlení průměrů na 2 desetinná místa.
+    Doplnění sloupce pro rosný bod.
     """
     key_str = row.get("key")
     parsed_utc = None
@@ -24,16 +40,22 @@ def _normalize_aggregated_row(row, tzinfo):
     else:
         local_iso = to_local_iso_from_utc(parsed_utc, tzinfo)
 
+    temp = _round2(row.get("avg_temp"))
+    hum = _round2(row.get("avg_hum"))
+    dew = _round2(compute_dew_point(temp, hum))
+
     return {
         "key": local_iso,
-        "temperature": _round2(row.get("avg_temp")),
-        "humidity": _round2(row.get("avg_hum")),
+        "temperature": temp,
+        "humidity": hum,
+        "dew_point": dew,
         "count": int(row.get("count") or 0)
     }
 
 def _normalize_measurement_row(row, tzinfo):
     """
     Převod jednotlivého měření na požadovaný tvar pro raw s zaokrouhlením na 2 desetinná místa.
+    Doplnění sloupce pro rosný bod.
     """
     ts_txt = row.get("timestamp")
     try:
@@ -41,16 +63,22 @@ def _normalize_measurement_row(row, tzinfo):
         key = to_local_iso_from_utc(dt, tzinfo)
     except Exception:
         key = ts_txt
+
+    temp = _round2(row.get("temperature"))
+    hum = _round2(row.get("humidity"))
+    dew = _round2(compute_dew_point(temp, hum))
+
     return {
         "key": key,
-        "temperature": _round2(row.get("temperature")),
-        "humidity": _round2(row.get("humidity")),
+        "temperature": temp,
+        "humidity": hum,
+        "dew_point": dew,
         "count": 1
     }
 
 def handle_aggregate(sensor_id: str, level: str, tzinfo, start_iso: str, end_iso: str, group_by: str):
     """
-    Hlavní rozhraní: vrací list dict s poli key, temperature, humidity, count.
+    Hlavní rozhraní: vrací list dict s poli key, temperature, humidity, dev_point, count.
     """
     with SqlSensorData() as db:
         if level == "raw":

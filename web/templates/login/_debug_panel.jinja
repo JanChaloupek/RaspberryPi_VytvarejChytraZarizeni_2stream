@@ -1,0 +1,53 @@
+<br>
+<!-- ============================================================
+     Panel: Testovací účty
+     ------------------------------------------------------------
+     Účel:
+     - Zobrazuje přihlašovací údaje pro testovací účty (Admin, User).
+     - Používá Bootstrap card + table komponenty.
+     - V produkčním prostředí se panel automaticky skryje.
+     ============================================================ -->
+<div class="card border-info mb-3">
+  
+  <!-- Hlavička karty -->
+  <div class="card-header d-flex align-items-center gap-2">
+    <span class="fw-semibold">Testovací účty</span>
+  </div>
+  
+  <!-- Tělo karty -->
+  <div class="card-body p-0">
+    
+    <!-- Tabulka s účty -->
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <td scope="col">Role</td>
+            <td scope="col">Uživatel</td>
+            <td scope="col">Heslo</td>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Admin účet -->
+          <tr>
+            <td><span class="badge bg-primary">Admin</span></td>
+            <td><code>admin</code></td>
+            <td><code>heslo357</code></td>
+          </tr>
+          <!-- User účet -->
+          <tr>
+            <td><span class="badge bg-secondary">User</span></td>
+            <td><code>user</code></td>
+            <td><code>heslo</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Poznámka pod tabulkou -->
+    <div class="small text-muted px-3 py-2">
+      Tyto údaje jsou zobrazeny pro testování. V produkci se panel sám skryje.
+    </div>
+  </div>
+</div>
+<br>

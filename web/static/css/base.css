@@ -1,0 +1,39 @@
+/* ============================================================
+   Base CSS
+   ------------------------------------------------------------
+   Účel:
+   - Definuje globální CSS proměnné (root variables) pro barvy,
+     spacing a typografii.
+   - Obsahuje základní styly pro sekce, nadpisy a timestamp.
+   - Používá se jako základní vrstva, na kterou navazují
+     component.css, layout.css, darkmode.css atd.
+   ============================================================ */
+
+/* === Root variables ===
+   Globální proměnné pro barvy a typografii breadcrumbu,
+   odkazy a výšku navigační lišty.
+   ------------------------------------------------------------ */
+:root {
+  --breadcrumb-text: #2c3e50;       /* Barva textu breadcrumb položek */
+  --breadcrumb-muted: #9aa6b2;      /* Barva oddělovače (separator) */
+  --breadcrumb-sep-gap: 0.5rem;     /* Mezery kolem separatoru */
+  --breadcrumb-font-size: 0.95rem;  /* Velikost písma breadcrumb */
+  --link-hover-color: #0b5fff;      /* Barva odkazů při hoveru */
+  --breadcrumb-active: #6c757d;     /* Barva aktivní položky breadcrumb */
+  --navbar-height: 56px;            /* Výška navigační lišty */
+}
+
+/* === Section heading ===
+   Ikony v nadpisech sekcí (např. dashboard, tabulky).
+   ------------------------------------------------------------ */
+.section-heading i {
+  font-size: 1.2rem; /* Velikost ikony vedle nadpisu */
+}
+
+/* === Timestamp ===
+   Styl pro element s ID #timestamp (např. čas poslední aktualizace).
+   ------------------------------------------------------------ */
+#timestamp {
+  font-weight: 500; /* Polotučné písmo */
+  color: #555;      /* Neutrální šedá barva textu */
+}

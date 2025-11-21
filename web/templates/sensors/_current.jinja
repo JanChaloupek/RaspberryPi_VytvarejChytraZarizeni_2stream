@@ -1,0 +1,45 @@
+{% from "components/section_heading.jinja" import section_heading %}
+{% from "components/gauge.jinja" import gauge %}
+
+{# ============================================================
+   Sekce: Aktuální stav senzorů
+   ------------------------------------------------------------
+   Účel:
+   - Zobrazuje snapshot dat (čas posledního měření).
+   - Vykresluje tři gauge komponenty: Teplota, Vlhkost, Rosný bod.
+   - Používá makra section_heading a gauge pro konzistentní vzhled.
+   ============================================================ #}
+
+<section id="sensors-current" class="mb-4" aria-labelledby="sensors-current-title">
+  {{ section_heading("Aktuální stav", icon="bi-speedometer", id="sensors-current-title", level=5) }}
+  <div class="card p-3">
+    <div class="row g-3 align-items-center">
+
+      <!-- Snapshot bar
+           - Zobrazuje čas posledního měření.
+           - aria-live="polite" → screenreadery oznámí změnu. -->
+      <div id="snapshot-bar" class="snapshot-bar" role="status" aria-live="polite">
+        <div class="snapshot-inner">
+          <span class="snapshot-label">Data ze dne</span>
+          <time id="snapshot-time" class="snapshot-time" datetime=""></time>
+        </div>
+      </div>
+
+      <!-- Gauge komponenty
+           - Teplota, Vlhkost, Rosný bod.
+           - Používají makro gauge (arc_id, value_id, jednotka, popisek). -->
+      <div class="row text-center mb-4">
+        <div class="col-md-4">
+          {{ gauge('tempArc', 'temperature', '°C', 'Teplota') }}
+        </div>
+        <div class="col-md-4">
+          {{ gauge('humArc', 'humidity', '%', 'Vlhkost') }}
+        </div>
+        <div class="col-md-4">
+          {{ gauge('dewArc', 'dew_point', '°C', 'Rosný bod') }}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>

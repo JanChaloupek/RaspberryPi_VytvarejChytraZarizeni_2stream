@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Přihlášení</title>
+  <!-- Favicon -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+        crossorigin="anonymous">
+  
+  <!-- Vlastní CSS (načteno až po Bootstrapu, aby mělo vyšší prioritu) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/darkmode.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card" role="main" aria-labelledby="login-title">
+      
+      <!-- Hlavička karty: nadpis + tlačítko pro přepínání motivu -->
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h1 id="login-title" class="mb-0">Přihlášení</h1>
+        <button id="theme-toggle" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Přepnout motiv">
+          <span class="theme-icon">🌙</span>
+        </button>
+      </div>
+      <p class="lead">Přihlaste se pro přístup do rozhraní</p>
+
+      <!-- Flash zprávy (např. chybné přihlášení) -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Zavřít"></button>
+          </div>
+        {% endfor %}
+        </div>
+      {% endif %}
+      {% endwith %}
+
+      <!-- Logo a název aplikace -->
+      <div class="text-center mb-4">
+        <img src="{{ url_for('static', filename='img/logo.png') }}"
+             alt="Logo organizace" width="96" height="96" class="mb-3">
+        <h1 class="h4 text-primary">Dashboard</h1>
+      </div>
+
+      <!-- Formulář pro přihlášení -->
+      <form class="login-form" method="post" action="{{ url_for('login', next=request.args.get('next')) }}">
+        <div class="mb-3">
+          <label for="username" class="form-label">Uživatel</label>
+          <input id="username" name="username" type="text" class="form-control"
+                 autocomplete="username" value="{{ username|default('') }}" required>
+        </div>
+
+        <div class="mb-3">
+          <label for="password" class="form-label">Heslo</label>
+          <input id="password" name="password" type="password" class="form-control"
+                 autocomplete="current-password" required>
+        </div>
+
+        <!-- Tlačítko pro odeslání -->
+        <div class="login-actions d-flex justify-content-center">
+          <button type="submit" class="btn btn-primary w-100 w-lg-auto">Přihlásit</button>
+        </div>
+      </form>
+
+      <!-- Poznámka pod formulářem -->
+      <p class="login-note text-center mt-3">
+        Pokud neznáte přihlašovací údaje, kontaktujte administrátora.
+      </p>
+
+      <!-- Kontakt na administrátora -->
+      <div class="text-center mt-4">
+        <a href="mailto:administrator@chaloupek.uk" class="text-decoration-none">
+          ✉️ Napsat administrátorovi
+        </a>
+      </div>
+
+      <!-- Debug panel (zobrazuje se jen v DEBUG režimu) -->
+      {% if config.DEBUG %}
+        {% include "login/_debug_panel.jinja" %}
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- Bootstrap JS bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+          crossorigin="anonymous"></script>
+
+  <!-- Přepínání motivu (light/dark) -->
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+</body>
+</html>

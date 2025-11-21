@@ -1,0 +1,8 @@
+tunnel: rb5
+credentials-file: /home/honza/.cloudflared/40cda137-687a-4b23-8307-a341868a830b.json
+
+ingress:
+  - hostname: rb5.chaloupek.uk
+    service: http://localhost:5000
+
+  - service: http_status:404

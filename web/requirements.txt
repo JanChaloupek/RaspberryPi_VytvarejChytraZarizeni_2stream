@@ -1,0 +1,7 @@
+Flask
+Flask-Login
+Werkzeug
+gpiozero
+adafruit-blinka
+plotly
+plotly-express

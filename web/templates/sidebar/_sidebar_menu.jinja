@@ -1,0 +1,51 @@
+{# ============================================================
+   Sidebar navigace
+   ------------------------------------------------------------
+   Účel:
+   - Vertikální navigační menu pro jednotlivé sekce dashboardu.
+   - Používá Bootstrap nav-link + ikony (Bootstrap Icons).
+   - Obsah se dynamicky mění podle role uživatele (admin vs. user).
+   ============================================================ #}
+
+<nav class="nav flex-column">
+  
+  <!-- Odkaz na sekci Nastavení -->
+  <a class="nav-link" href="#settings">
+    <i class="bi-gear me-1"></i> Nastavení
+  </a>
+  
+  <!-- Podmíněné zobrazení sekce aktuátorů
+       - Pokud je role == "admin" → zobrazí se Ovládání aktuátorů.
+       - Jinak → zobrazí se Stav aktuátorů. -->
+  {% if role == "admin" %}
+  <a class="nav-link" href="#actuators-settings">
+    <i class="bi-sliders me-1"></i> Ovládání aktuátorů
+  </a>
+  {% else %}
+  <a class="nav-link" href="#actuators-status">
+    <i class="bi-eye me-1"></i> Stav aktuátorů
+  </a>
+  {% endif %}  
+  
+  <!-- Odkaz na sekci Aktuální stav senzorů -->
+  <a class="nav-link" href="#sensors-current">
+    <i class="bi-speedometer me-1"></i> Aktuální stav
+  </a>
+  
+  <!-- Odkaz na sekci Historická data -->
+  <a class="nav-link" href="#sensors-history">
+    <i class="bi-clock-history me-1"></i> Historická data
+  </a>
+  
+  <!-- Podmíněné zobrazení sekce logů (jen pro admina) -->
+  {% if role == "admin" %}
+  <a class="nav-link" href="#log-viewer">
+    <i class="bi-journal-text me-1"></i> Prohlížeč logů
+  </a>
+
+  <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#styleguideModal">
+    <i class="bi-palette me-1"></i> Style Guide
+  </a>
+  {% endif %}
+
+</nav>

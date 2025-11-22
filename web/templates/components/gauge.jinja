@@ -1,0 +1,50 @@
+{# ============================================================
+   Makro: gauge
+   ------------------------------------------------------------
+   Účel:
+   - Vykresluje jednoduchý gauge (obloukový měřák) pomocí SVG.
+   - Obsahuje pozadí, výplň, hodnotu, jednotku a popisek.
+   - Volitelné parametry min_val a max_val zobrazují štítky
+     na koncích oblouku.
+   Použití:
+     {{ gauge("temp-arc", "temp-value", "°C", "Teplota", min_val=0, max_val=40) }}
+   ============================================================ #}
+
+{% macro gauge(arc_id, value_id, unit, label, min_val=None, max_val=None) %}
+<div class="d-flex flex-column align-items-center gauge-block">
+  <svg viewBox="0 0 120 120" class="w-75">
+    <!-- Pozadí gauge (šedý oblouk) -->
+    <path class="gauge-bg" d="M30,90 A40,40 0 1,1 90,90"></path>
+
+    <!-- Výplň gauge (barevný oblouk, dynamicky měněný přes JS) -->
+    <path class="gauge-fill" id="{{ arc_id }}" d="M30,90 A40,40 0 1,1 90,90"></path>
+
+    <!-- Hodnota uprostřed gauge -->
+    <text x="60" y="65" class="gauge-value" id="{{ value_id }}">--</text>
+
+    <!-- Jednotka pod hodnotou -->
+    <text x="60" y="80" class="gauge-unit">{{ unit }}</text>
+
+    <!-- Malé štítky na koncích oblouku (min vlevo, max vpravo) -->
+    <text id="{{ arc_id }}-min"
+          class="gauge-end-label"
+          x="28" y="96"
+          text-anchor="start"
+          font-size="10"
+          fill="#666">
+      {{ min_val if min_val is not none else '--' }}
+    </text>
+    <text id="{{ arc_id }}-max"
+          class="gauge-end-label"
+          x="92" y="96"
+          text-anchor="end"
+          font-size="10"
+          fill="#666">
+      {{ max_val if max_val is not none else '--' }}
+    </text>
+  </svg>
+
+  <!-- Popisek gauge pod SVG -->
+  <div class="gauge-label">{{ label }}</div>
+</div>
+{% endmacro %}

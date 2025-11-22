@@ -1,0 +1,225 @@
+/* static/css/darkmode.css */
+/* ============================================================
+   Účel:
+   - Přepisuje barvy a proměnné pro tmavý režim.
+   - Aktivuje se pouze pokud má <html> atribut data-bs-theme="dark".
+   - Oddělené sekce pro root variables, komponenty, layout,
+     login stránku, navbar, hlavní blok a globální flash zprávy.
+   ------------------------------------------------------------
+   Jak používat:
+   - Do <html> vlož atribut data-bs-theme="dark" pro aktivaci.
+   - Všechny barvy a styly se přepíší jen v tomto režimu.
+   - Světlý/tmavý režim loga se řeší přes .logo-light / .logo-dark.
+   - Soubor je rozdělen do sekcí, aby se snadno udržoval.
+   ============================================================ */
+
+
+/* === Plot variables (grafy) ===
+   Používají se pro pozadí a osy grafů.
+   ------------------------------------------------------------ */
+[data-bs-theme="dark"] {
+  --plot-bg: #121212;       /* pozadí celé plochy */
+  --plot-area-bg: #1e1e1e;  /* plocha grafu */
+  --plot-text: #e0e0e0;     /* texty a popisky */
+  --plot-axis: #aaa;        /* barva osy */
+}
+
+/* === Logo přepínání ===
+   - .logo-light je výchozí varianta
+   - .logo-dark se zobrazí jen v tmavém režimu
+   ------------------------------------------------------------ */
+.logo-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .logo-light { display: none; }
+  .logo-dark { display: inline; }
+}
+
+
+/* === Root variables (dark mode override) ===
+   Přepisuje globální proměnné definované v base.css.
+   Používají se pro breadcrumb, odkazy a timestamp.
+   ------------------------------------------------------------ */
+[data-bs-theme="dark"] {
+  --breadcrumb-text: #e0e0e0;       /* Světle šedý text breadcrumb */
+  --breadcrumb-muted: #888;         /* Oddělovač v tmavém režimu */
+  --link-hover-color: #66b2ff;      /* Světlejší modrá při hoveru */
+  --breadcrumb-active: #aaa;        /* Aktivní položka breadcrumb */
+  --timestamp-color: #ccc;          /* Světlejší timestamp */
+}
+
+
+/* ============================================================
+   Dark mode overrides for components
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy gauge prvků, tabulek a breadcrumb navigace.
+   ============================================================ */
+
+/* Gauge prvky */
+[data-bs-theme="dark"] .gauge-value { fill: #eee; }
+[data-bs-theme="dark"] .gauge-unit { fill: #aaa; }
+[data-bs-theme="dark"] .gauge-bg { stroke: #444; }
+[data-bs-theme="dark"] .gauge-label { color: #66b2ff; }
+[data-bs-theme="dark"] .gauge-end-label { fill: #aaa; }
+
+/* Tabulky */
+[data-bs-theme="dark"] .table-hover tbody tr:hover { background-color: #223; }
+[data-bs-theme="dark"] tbody tr:nth-child(even) { background-color: #1a1a1a; }
+[data-bs-theme="dark"] tbody tr:hover { background-color: #223; }
+[data-bs-theme="dark"] .chev-btn { color: #66b2ff; }
+
+/* Breadcrumb navigace */
+[data-bs-theme="dark"] #breadcrumb { color: var(--breadcrumb-text); }
+[data-bs-theme="dark"] .breadcrumb-sep { color: var(--breadcrumb-muted); }
+[data-bs-theme="dark"] .breadcrumb-item.active { color: var(--breadcrumb-active); }
+
+
+/* ============================================================
+   Dark mode overrides for layout
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy sidebaru a borderu pro tmavý režim.
+   ============================================================ */
+[data-bs-theme="dark"] .sidebar-fixed {
+  background-color: #1e1e1e;   /* tmavé pozadí */
+  border-right: 1px solid #444; /* tmavý oddělující border */
+}
+
+
+/* ============================================================
+   Dark mode overrides for login page
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy login karty, formuláře, tlačítek a flash zpráv.
+   - Login část je pohromadě pro lepší přehlednost.
+   ============================================================ */
+
+[data-bs-theme="dark"] .login-card {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+[data-bs-theme="dark"] .login-card h1 {
+  color: #66b2ff;
+}
+[data-bs-theme="dark"] .login-card p.lead {
+  color: #bbb;
+}
+
+[data-bs-theme="dark"] .login-form label {
+  color: #ccc;
+}
+[data-bs-theme="dark"] .login-form input {
+  background: #2a2a2a;
+  border: 1px solid #555;
+  color: #eee;
+}
+[data-bs-theme="dark"] .login-form input:focus {
+  border-color: #66b2ff;
+  box-shadow: 0 6px 18px rgba(102,178,255,0.25);
+}
+
+[data-bs-theme="dark"] .btn-login {
+  background: linear-gradient(180deg, #3399ff, #1a66cc);
+  box-shadow: 0 8px 18px rgba(51,153,255,0.25);
+}
+
+[data-bs-theme="dark"] .login-actions {
+  color: #aaa;
+}
+[data-bs-theme="dark"] .login-actions a {
+  color: #66b2ff;
+}
+
+[data-bs-theme="dark"] .login-note {
+  color: #999;
+}
+
+/* Flash zprávy na login stránce */
+[data-bs-theme="dark"] .flash-list li.success { background: #1f3d3d; color: #66ffcc; }
+[data-bs-theme="dark"] .flash-list li.info    { background: #1a2a40; color: #66b2ff; }
+[data-bs-theme="dark"] .flash-list li.danger  { background: #402020; color: #ff6666; }
+
+
+/* ============================================================
+   Dark mode overrides for navbar + main content
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy horní lišty (navbar) a hlavního bloku.
+   ============================================================ */
+
+/* Navbar */
+[data-bs-theme="dark"] .navbar {
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #444;
+}
+[data-bs-theme="dark"] .navbar .navbar-brand {
+  color: #ffffff;
+}
+[data-bs-theme="dark"] .navbar .btn {
+  border-color: #888;
+  color: #ddd;
+}
+
+/* Hlavní blok obsahu */
+[data-bs-theme="dark"] main {
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+
+/* ============================================================
+   Dark mode overrides for global flash messages
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy Bootstrap alertů (flash zprávy).
+   ============================================================ */
+[data-bs-theme="dark"] .alert {
+  background-color: #333;
+  color: #eee;
+  border-color: #555;
+}
+
+
+/* ============================================================
+   Dark mode overrides for theme toggle button
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje vzhled tlačítka pro přepínání motivu.
+   ============================================================ */
+[data-bs-theme="dark"] #theme-toggle {
+  border-color: #888;
+  color: #ddd;
+}
+
+/* ============================================================
+   Dark mode overrides for offcanvas sidebar (mobilní verze)
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy offcanvas menu pro tmavý režim.
+   - Zajišťuje konzistenci s fixním sidebarem.
+   ============================================================ */
+
+[data-bs-theme="dark"] .offcanvas {
+  background-color: #1e1e1e;   /* tmavé pozadí */
+  color: #e0e0e0;              /* světlý text */
+}
+
+[data-bs-theme="dark"] .offcanvas-header {
+  border-bottom: 1px solid #444; /* oddělující border */
+}
+
+[data-bs-theme="dark"] .offcanvas-title {
+  color: #ffffff; /* nadpis menu */
+}
+
+[data-bs-theme="dark"] .offcanvas-body a {
+  color: #c0c0c0; /* odkazy v menu */
+  text-decoration: none;
+}
+
+[data-bs-theme="dark"] .offcanvas-body a:hover {
+  color: #ffffff; /* hover efekt */
+}

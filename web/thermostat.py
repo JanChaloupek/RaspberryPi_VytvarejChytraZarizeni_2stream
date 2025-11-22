@@ -1,39 +1,86 @@
-# thermostat.py
+"""
+thermostat.py
+-------------
+
+Účel:
+- Řídí logiku termostatu pro senzory teploty.
+- Periodicky kontroluje hodnoty teploty z databáze a podle nastaveného setpointu
+  a hystereze zapíná nebo vypíná relé.
+- Používá ActuatorManager pro ovládání relé a LED.
+
+Použití:
+- Vytvoř instanci Thermostat s odkazem na ActuatorManager.
+- Zavolej `start()` pro spuštění vlákna, které bude periodicky kontrolovat senzory.
+- Zavolej `stop()` pro ukončení vlákna a bezpečné vypnutí.
+- Pro testování lze použít `thermostat_once()` pro jednorázovou kontrolu.
+
+Hlavní třída:
+- Thermostat(act: ActuatorManager, interval: int = 10, hysteresis: float = 1.0)
+    - act: správce aktuátorů (LED/relé)
+    - interval: čas mezi cykly kontroly v sekundách
+    - hysteresis: šířka deadbandu kolem setpointu (např. 1.0 → ±1 °C)
+
+Vlákno:
+- Běží na pozadí, kontroluje všechny senzory v režimu "auto".
+- Pokud je teplota pod setpoint - hystereze → relé ON.
+- Pokud je teplota nad setpoint + hystereze → relé OFF.
+- Jinak se stav nemění.
+"""
+
 import threading
-import time
-from typing import Optional, Dict
-from db import SqlSensorData
-from actuators import ActuatorManager
 import logging
+from typing import Optional
+from db import SqlSensorData
+from actuators.manager import ActuatorManager
 
 logger = logging.getLogger("thermostat")
 
+
 class Thermostat:
     """
-    Periodicky kontroluje senzory a přepíná relé v režimu 'auto' podle setpointu.
-    Konstruktor přijímá:
-      - act: instance ActuatorManager (může být None; v tom případě nic nespravuje)
-      - interval: kontrolní interval v sekundách
-      - hysteresis: celková šířka deadbandu v °C (např. 1.0)
+    Periodicky kontroluje senzory a přepíná relé v režimu 'auto' podle setpointu (nastaveného u relé).
+
+    - Aktuální teplotu čte z DB pro konkrétní senzor (SqlSensorData.get_current).
+    - Má jednu společnou hysterezi pro celou třídu (deadband ±hys kolem setpointu).
+    - Běží ve vlákně; bezpečně start/stop; podrobné logování.
+
+    Args:
+        act (Optional[ActuatorManager]): Správce aktuátorů (pokud None, termostat nic neovládá).
+        interval (int): Interval v sekundách mezi cykly kontroly (minimálně 1).
+        hysteresis (float): Šířka deadbandu (např. 1.0 → ±1.0 °C).
     """
-    def __init__(self, act: Optional[ActuatorManager], interval: int = 10, hysteresis: float = 1.0):
-        self.act = act
-        self.interval = max(1, int(interval))
-        self.hysteresis = float(hysteresis)
+
+    def __init__(self, act: Optional[ActuatorManager], interval: int = 10, hysteresis: float = 1.0) -> None:
+        self.act: Optional[ActuatorManager] = act
+        self.interval: int = max(1, int(interval))
+        self.hysteresis: float = float(hysteresis)
         self._stop_event: Optional[threading.Event] = None
         self._thread: Optional[threading.Thread] = None
 
     # ---- veřejné API ----
-    def start(self):
+    def start(self) -> None:
+        """
+        Spustí vlákno termostatu.
+
+        Pokud už běží, metoda nic neudělá.
+        """
         if self._thread and self._thread.is_alive():
             logger.debug("Thermostat already running")
             return
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._loop, name="thermostat", daemon=True)
         self._thread.start()
-        logger.info(f"Thermostat thread started (interval = {self.interval}s, hysteresis = {self.hysteresis}°C)")
+        logger.info(
+            f"Thermostat thread started (interval = {self.interval}s, hysteresis = {self.hysteresis}°C)"
+        )
 
-    def stop(self, timeout: float = 2.0):
+    def stop(self, timeout: float = 2.0) -> None:
+        """
+        Zastaví vlákno termostatu.
+
+        Args:
+            timeout (float): Maximální čas v sekundách pro join vlákna.
+        """
         if not self._stop_event:
             return
         self._stop_event.set()
@@ -43,12 +90,18 @@ class Thermostat:
         self._stop_event = None
         logger.info("Thermostat thread stopped")
 
-    def thermostat_once(self):
-        """One-shot run (useful for tests)."""
+    def thermostat_once(self) -> None:
+        """
+        Provede jednorázovou kontrolu (užitečné pro testy).
+        """
         self._run_iteration()
 
     # ---- interní ----
-    def _loop(self):
+    def _loop(self) -> None:
+        """
+        Hlavní smyčka běžící ve vlákně.
+        Periodicky spouští `_run_iteration()` dokud není nastaven `_stop_event`.
+        """
         logger.info("Thermostat loop booting")
         while not (self._stop_event and self._stop_event.wait(self.interval)):
             try:
@@ -58,96 +111,67 @@ class Thermostat:
         logger.info("Thermostat loop exiting")
 
     def _read_sensor_temp(self, sensor_id: str) -> Optional[float]:
+        """
+        Načte aktuální teplotu senzoru z DB.
+
+        Args:
+            sensor_id (str): ID senzoru (např. 'DHT11_01').
+
+        Returns:
+            Optional[float]: Aktuální teplota nebo None, pokud není dostupná.
+        """
         try:
             with SqlSensorData() as db:
                 row = db.get_current(sensor_id)
             if not row:
                 return None
-            # db.get_current returns a mapping-like object in your app; adapt if different
             temp = row.get("temperature") if isinstance(row, dict) else row[2]
-            if temp is None:
-                return None
-            return float(temp)
+            return float(temp) if temp is not None else None
         except Exception as ex:
-            print(f"Failed to read sensor {sensor_id} - exception {ex}")
+            logger.exception("Failed to read sensor %s temperature: %s", sensor_id, ex)
             return None
 
-    def _get_actor_setpoint(self, actor_name: str) -> Optional[float]:
-        try:
-            if not self.act:
-                return None
-            return self.act.get_setpoint(actor_name)
-        except Exception as ex:
-            print(f"Failed to get setpoint for {actor_name} - exception {ex}")
-            return None
+    def _run_iteration(self) -> None:
+        """
+        Projde všechna relé v režimu 'auto' a rozhodne ON/OFF podle DB teploty, setpointu a hystereze.
+        """
+        if not self.act:
+            logger.warning("No ActuatorManager provided; skipping iteration")
+            return
 
-    def _get_relay_mode(self, actor_name: str) -> Optional[str]:
-        try:
-            if not self.act:
-                return None
-            return self.act.get_relay_mode(actor_name)
-        except Exception as ex:
-            print(f"Failed to read mode for {actor_name} - exception {ex}")
-            return None
+        hys: float = self.hysteresis
 
-    def _get_actor_state(self, actor_name: str) -> Optional[bool]:
-        try:
-            if not self.act:
-                return None
-            return self.act.get_actor_state(actor_name)
-        except Exception as ex:
-            print(f"Failed to read actor state {actor_name} - exception {ex}")
-            return None
-
-    def _set_actor(self, actor_name: str, on: bool):
-        try:
-            if not self.act:
-                print(f"No ActuatorManager provided; skipping set_actor for {actor_name}")
-                return
-            self.act.set_actor(actor_name, on)
-        except Exception as ex:
-            print("Failed to set actor {actor_name} -> {on} - exception {ex}")
-
-    def _run_iteration(self):
-        hys = float(self.hysteresis)
-        for actor_name in self.act.get_relays():
-            sensor_id = None
+        for sensor_name in self.act.list_sensors():
             try:
-                # získat id senzoru odstraněním prefixu relay_
-                if actor_name.startswith("relay_"):
-                    sensor_id = actor_name.removeprefix("relay_")
-                else:
-                    sensor_id = actor_name
-                mode = self._get_relay_mode(actor_name)
+                mode: str = self.act.get_relay_mode(sensor_name)
                 if mode != "auto":
                     continue
 
-                temp = self._read_sensor_temp(sensor_id)
+                temp: Optional[float] = self.act.get_sensor_temperature(sensor_name)
                 if temp is None:
-                    print(f"No temperature for sensor {sensor_id}; skipping")
+                    logger.debug("No temperature for sensor %s; skipping", sensor_name)
                     continue
 
-                sp = self._get_actor_setpoint(actor_name)
-                if sp is None:
-                    print(f"No setpoint for actor {actor_name}; skipping")
-                    continue
-                sp = float(sp)
-                current_on = self._get_actor_state(actor_name)
+                sp: float = self.act.get_setpoint(sensor_name)
+                current_on: bool = self.act.get_relay_state(sensor_name)
+
+                desired: Optional[bool] = None
                 if temp <= (sp - hys):
-                    # V zadani je: "Pokud naměřená teplota klesne pod (setpoint - hys), relé se zapne"
-                    # protoze ale ziskavam teplotu v celych stupnich, zvedlo by to hysterezi o dalsi 1°C, proto je tam podminka <=
                     desired = True
                 elif temp >= (sp + hys):
-                    # V zadani je: "Pokud naměřená teplota překročí (setpoint + hys), relé se vypne"
-                    # protoze ale ziskavam teplotu v celych stupnich, zvedlo by to hysterezi o dalsi 1°C, proto je tam podminka >=
                     desired = False
-                else:
-                    # Jinak nedelej nic
-                    desired = None
-                    
+
                 if desired is not None and desired != current_on:
-                    # Pokud mas novy stav a je jiny nez soucasny, zmen ho
-                    print(f"Thermostat action: sensor={sensor_id} actor={actor_name} temp={temp:.2f} setpoint={sp:.2f} -> {'ON' if desired else 'OFF'}")
-                    self._set_actor(actor_name, desired)
+                    log: str = (
+                        f"Thermostat action: sensor={sensor_name} "
+                        f"temp={temp:.2f} setpoint={sp:.2f} -> "
+                        f"{'ON' if desired else 'OFF'}"
+                    )
+                    logger.info(log)
+                    if desired:
+                        self.act.turn_on_relay(sensor_name)
+                    else:
+                        self.act.turn_off_relay(sensor_name)
+
             except Exception as ex:
-                print(f"Error processing thermostat for sensor={sensor_id} actor={actor_name} - exception {ex}")
+                logger.exception("Error processing thermostat for sensor=%s: %s", sensor_name, ex)

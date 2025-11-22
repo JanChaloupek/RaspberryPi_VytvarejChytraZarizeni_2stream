@@ -30,7 +30,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import re
 import logging
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
 logger = logging.getLogger("time_utils")
 
@@ -123,22 +123,51 @@ def to_utc(dt_local: datetime) -> datetime:
     return dt_local.astimezone(timezone.utc)
 
 
-def to_local_iso_from_utc(utc_dt: datetime, tzinfo: timezone) -> str:
+def to_local_iso_from_utc(utc_dt: datetime, tzinfo: Union[datetime.tzinfo, ZoneInfo]) -> str:
     """
-    Převede UTC datetime na lokální ISO string.
-
+    Převede UTC datetime na lokální ISO string s offsetem.
+    
     Parametry:
-    - utc_dt: datetime v UTC
-    - tzinfo: cílová časová zóna
+    - utc_dt: datetime v UTC (pokud nemá tzinfo, nastaví se na UTC)
+    - tzinfo: cílová časová zóna (např. zoneinfo.ZoneInfo("Europe/Prague"))
 
     Návratová hodnota:
-    - ISO string "%Y-%m-%dT%H:%M:%S"
+    - ISO string ve formátu "YYYY-MM-DDTHH:MM:SS±HH:MM"
+      (např. "2025-11-14T21:00:00+01:00")
     """
     if utc_dt.tzinfo is None:
         utc_dt = utc_dt.replace(tzinfo=timezone.utc)
     local_dt = utc_dt.astimezone(tzinfo)
-    return local_dt.strftime(ISO_FORMAT)
+    return local_dt.isoformat(timespec="seconds")
 
+
+def shorten_key_by_level(level: str, key: str) -> str:
+    """
+    Shortens an ISO key according to the aggregation level.
+
+    Parameters:
+    - level: aggregation level ("monthly", "daily", "hourly", "minutely", "raw")
+    - key: ISO string (e.g. "2025-11-14T22:00:00+00:00")
+
+    Returns:
+    - shortened key (e.g. "2025-11" for monthly)
+    """
+    print("Shorten key input1:", level, key)
+    key = key.replace("T", " ")
+    print("Shorten key input2:", level, key)
+    if level == "monthly":
+        return key[:4]              # "YYYY"
+    elif level == "daily":
+        return key[:7]             # "YYYY-MM"
+    elif level == "hourly":
+        return key[:10]             # "YYYY-MM-DD"
+    elif level == "minutely":
+        return key[:13]             # "YYYY-MM-DD HH"
+    elif level == "raw":
+        return key[:16]             # "YYYY-MM-DD HH:MM"
+    else:
+        raise ValueError(f"Unsupported level: {level}")
+    
 
 def parse_local_key_to_range(level: str, key: str, tzinfo: timezone) -> Tuple[str, str, Optional[str]]:
     """
@@ -170,17 +199,17 @@ def parse_local_key_to_range(level: str, key: str, tzinfo: timezone) -> Tuple[st
         start_local = local_dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         end_local = start_local.replace(year=start_local.year + 1, month=1) if start_local.month == 12 \
             else start_local.replace(month=start_local.month + 1)
-        group_by = "%Y-%m-%d"
+        group_by = "%Y-%m-%d 00:00:00Z"
 
     elif level == "hourly":
         start_local = local_dt.replace(hour=0, minute=0, second=0, microsecond=0)
         end_local = start_local + timedelta(days=1)
-        group_by = "%Y-%m-%d %H"
+        group_by = "%Y-%m-%d %H:00:00Z"
 
     elif level == "minutely":
         start_local = local_dt.replace(minute=0, second=0, microsecond=0)
         end_local = start_local + timedelta(hours=1)
-        group_by = "%Y-%m-%d %H:%M"
+        group_by = "%Y-%m-%d %H:%M:00Z"
 
     elif level == "raw":
         start_local = local_dt.replace(second=0, microsecond=0)

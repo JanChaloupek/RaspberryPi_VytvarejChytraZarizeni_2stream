@@ -69,7 +69,11 @@ async function fetchJsonWithAbort(url, which = 'default') {
       throw new Error(`HTTP ${res.status}: ${text}`);
     }
     const json = await res.json();
-    console.debug(`[api] fetch json (${which}) for ${url}:`, json);
+    try {
+      console.info('[api] json =', json);
+    }catch (err) {
+      console.error('[api] error', err)
+    }
     return json;
   } catch (err) {
     if (err.name === 'AbortError') {

@@ -1,9 +1,17 @@
 <!doctype html>
-<html lang="cs">
+<html lang="cs" data-bs-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Přihlášení</title>
+
+  <!-- Nastavení motivu hned na začátku -->
+  <script>
+    const savedTheme = localStorage.getItem('theme')
+      || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-bs-theme', savedTheme);
+  </script>
+  
   <!-- Favicon -->
   <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
   
@@ -82,11 +90,6 @@
           ✉️ Napsat administrátorovi
         </a>
       </div>
-
-      <!-- Debug panel (zobrazuje se jen v DEBUG režimu) -->
-      {% if config.DEBUG %}
-        {% include "login/_debug_panel.jinja" %}
-      {% endif %}
 
     </div>
   </div>

@@ -33,21 +33,31 @@ function makeCell(tag = 'td', className = '', content = '') {
   return el;
 }
 
+function makeCellTd(className = '', content = '') {
+  return makeCell('td', className, content);
+} 
+
+function makeCellTh(className = '', content = '') {
+  return makeCell('th', className, content);
+}
+
 /**
  * makeChevronButton()
  * ----------------------------------------------------
  * Vytvoří tlačítko s chevronem (›) pro drill-down.
  * - Používá se v prvním sloupci tabulky.
  * - Má ARIA atributy pro přístupnost.
- *
+ * 
+ * @param {string} title - tooltip tlačítka (default 'Rozkliknout')
  * @returns {HTMLButtonElement} tlačítko
  */
-function makeChevronButton() {
+function makeChevronButton(title = 'Rozkliknout') {
   const btn = document.createElement('button');
   btn.type = 'button';
+  btn.title = title;
   btn.className = 'chev-btn';
   btn.setAttribute('aria-hidden', 'false');
-  btn.setAttribute('aria-label', 'Rozkliknout');
+  btn.setAttribute('aria-label', title);
   btn.innerHTML = '<span class="chev">›</span>';
   return btn;
 }
@@ -84,18 +94,19 @@ function formatNumber(v, digits = 2) {
  * - Časový klíč se formátuje pomocí formatKeyForCzechDisplay().
  */
 export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick = null) {
+  console.debug('[table] call renderTable() - rows', rows)
   if (!tableRoot) return;
   tableRoot.innerHTML = '';
 
   // Header (first column reserved for chevron)
   const thead = document.createElement('thead');
   const thr = document.createElement('tr');
-  thr.appendChild(makeCell('th', 'chev-col', ''));
-  thr.appendChild(makeCell('th', '', 'Čas'));
-  thr.appendChild(makeCell('th', '', 'Teplota'));
-  thr.appendChild(makeCell('th', '', 'Vlhkost'));
-  thr.appendChild(makeCell('th', '', 'Rosný bod'));
-  thr.appendChild(makeCell('th', '', 'Počet'));
+  thr.appendChild(makeCellTh('chev-col', ''));
+  thr.appendChild(makeCellTh('', 'Čas'));
+  thr.appendChild(makeCellTh('', 'Teplota'));
+  thr.appendChild(makeCellTh('', 'Vlhkost'));
+  thr.appendChild(makeCellTh('', 'Rosný bod'));
+  thr.appendChild(makeCellTh('', 'Počet'));
   thead.appendChild(thr);
   tableRoot.appendChild(thead);
 
@@ -114,47 +125,37 @@ export function renderTable(tableRoot, rows = [], level = 'hourly', onRowClick =
     const canDrill = !isRawLevel && (typeof onRowClick === 'function') && (hasExplicitChild || hasCount);
 
     // First column: chevron if drillable
-    const firstTd = makeCell('td', 'chev-col');
+    const firstTd = makeCellTd('chev-col');
     if (canDrill) {
       const btn = makeChevronButton();
-      btn.title = 'Rozkliknout';
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const childLevel = row.child_level || nextLevel(level) || 'raw';
-        const childKey = row.child_key || row.key;
-        console.debug('[table.js] Chevron click', { childLevel, childKey, row });
-        if (childKey) onRowClick(childLevel, childKey);
-      });
       firstTd.appendChild(btn);
       tr.classList.add('clickable-row');
-    }
-    tr.appendChild(firstTd);
 
-    // Time / key column - use Czech localized formatter
-    const displayTime = formatKeyForCzechDisplay(row.key || row.time || '', level);
-    tr.appendChild(makeCell('td', '', displayTime));
-
-    // Temperature
-    tr.appendChild(makeCell('td', '', formatNumber(row.temperature, 2)));
-
-    // Humidity
-    tr.appendChild(makeCell('td', '', formatNumber(row.humidity, 2)));
-
-    // Dew point
-    tr.appendChild(makeCell('td', '', formatNumber(row.dew_point, 2)));
-
-    // Count
-    tr.appendChild(makeCell('td', '', (Number.isFinite(Number(row.count)) ? String(row.count) : '--')));
-
-    // Row click handler (body) if drillable
-    if (canDrill) {
+      // Row click handler (body) if drillable
       tr.addEventListener('click', () => {
         const childLevel = row.child_level || nextLevel(level) || 'raw';
         const childKey = row.child_key || row.key;
-        console.debug('[table.js] Row click', { childLevel, childKey, row });
+        console.debug('[table] Row click', { childLevel, childKey, row });
         if (childKey) onRowClick(childLevel, childKey);
-      });
+      });      
     }
+    tr.appendChild(firstTd);
+
+    // Key column - use Czech localized formatter
+    const key = formatKeyForCzechDisplay(row.key || '', level);
+    tr.appendChild(makeCellTd('key-col', key));
+
+    // Temperature
+    tr.appendChild(makeCellTd('tem-col', formatNumber(row.temperature, 2)));
+
+    // Humidity
+    tr.appendChild(makeCellTd('hum-col', formatNumber(row.humidity, 2)));
+
+    // Dew point
+    tr.appendChild(makeCellTd('dew-col', formatNumber(row.dew_point, 2)));
+
+    // Count
+    tr.appendChild(makeCellTd('count-col', (Number.isFinite(Number(row.count)) ? String(row.count) : '--')));
 
     tbody.appendChild(tr);
   });

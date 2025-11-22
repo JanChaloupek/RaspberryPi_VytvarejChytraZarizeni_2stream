@@ -2,13 +2,15 @@
 // Modul pro automatické obnovování dat na dashboardu.
 // ----------------------------------------------------
 // Účel:
-// - Pravidelně volá funkce loadLatest() a loadAggregate() pro aktuální senzor.
+// - Pravidelně volá funkce loadLatest(), loadAggregate() a refreshActuators() pro aktuální senzor.
 // - Řídí interval automatického refreshování (start/stop).
 // - Zajišťuje, že se neprovádí paralelní refresh (ochrana proti kolizi).
+// - Respektuje viditelnost stránky (obnovuje jen pokud je stránka aktivní).
 //
 // Závislosti:
 // - latest.js (funkce loadLatest)
 // - aggregate.js (funkce loadAggregate)
+// - actuators.js (funkce refreshActuators)
 // - sensors.js (proměnná currentSensor)
 //
 // Konfigurace:
@@ -16,6 +18,7 @@
 
 import { loadLatest } from './latest.js';
 import { loadAggregate } from './aggregate.js';
+import { refreshActuators } from './actuators.js';
 import { currentSensor } from './sensors.js';
 
 const AUTO_REFRESH_MS = 10_000;
@@ -28,7 +31,7 @@ let __isRefreshing = false;
  * Spustí jednorázový refresh dat pro aktuální senzor.
  * - Pokud už probíhá refresh, vrátí true (bez akce).
  * - Pokud není vybraný senzor, vrátí false.
- * - Volá loadLatest() a loadAggregate() sekvenčně.
+ * - Volá loadLatest(), loadAggregate() a refreshActuators() sekvenčně.
  * - Zachytává chyby a loguje je do konzole.
  *
  * @returns {Promise<boolean>} true pokud proběhl pokus o refresh, false pokud chyběl senzor
@@ -36,13 +39,16 @@ let __isRefreshing = false;
 async function callAppRefresh() {
   if (__isRefreshing) return true;
   if (!currentSensor) return false;
+  if (document.visibilityState !== 'visible') return true; // stránka není viditelná → přeskoč
+
   __isRefreshing = true;
   try {
     await loadLatest();
     await loadAggregate();
+    await refreshActuators();
     return true;
   } catch (e) {
-    console.error('Auto-refresh error', e);
+    console.error('[refresh] Auto-refresh error:', e);
     return true;
   } finally {
     __isRefreshing = false;
@@ -60,11 +66,11 @@ async function callAppRefresh() {
  */
 export function startAutoRefresh() {
   if (__autoRefreshId !== null) return;
-  callAppRefresh().catch(console.error);
+  callAppRefresh().catch(err => console.error('[refresh] initial call failed:', err));
   __autoRefreshId = setInterval(() => {
     callAppRefresh().then(ok => {
       if (!ok) stopAutoRefresh();
-    }).catch(console.error);
+    }).catch(err => console.error('[refresh] interval call failed:', err));
   }, AUTO_REFRESH_MS);
 }
 

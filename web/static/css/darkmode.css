@@ -1,299 +1,225 @@
+/* static/css/darkmode.css */
 /* ============================================================
-   Dark Mode CSS
-   ------------------------------------------------------------
    Účel:
-   - Přepisuje barvy a vzhled komponent pro tmavý režim.
-   - Zajišťuje konzistentní kontrast a čitelnost v celé aplikaci.
-   - Navazuje na base.css a component.css.
+   - Přepisuje barvy a proměnné pro tmavý režim.
+   - Aktivuje se pouze pokud má <html> atribut data-bs-theme="dark".
+   - Oddělené sekce pro root variables, komponenty, layout,
+     login stránku, navbar, hlavní blok a globální flash zprávy.
+   ------------------------------------------------------------
+   Jak používat:
+   - Do <html> vlož atribut data-bs-theme="dark" pro aktivaci.
+   - Všechny barvy a styly se přepíší jen v tomto režimu.
+   - Světlý/tmavý režim loga se řeší přes .logo-light / .logo-dark.
+   - Soubor je rozdělen do sekcí, aby se snadno udržoval.
    ============================================================ */
 
-/* === Globální pozadí a text === */
-body.dark-mode {
-  background-color: #0b1220;
-  color: #e6eef6;
-}
-body.dark-mode a {
-  color: #8fb4ff;
+
+/* === Plot variables (grafy) ===
+   Používají se pro pozadí a osy grafů.
+   ------------------------------------------------------------ */
+[data-bs-theme="dark"] {
+  --plot-bg: #121212;       /* pozadí celé plochy */
+  --plot-area-bg: #1e1e1e;  /* plocha grafu */
+  --plot-text: #e0e0e0;     /* texty a popisky */
+  --plot-axis: #aaa;        /* barva osy */
 }
 
-/* === Bootstrap utility overrides === */
-body.dark-mode .bg-light,
-body.dark-mode .bg-white {
-  background-color: #1a2235 !important;
-  color: #e6eef6 !important;
-}
-body.dark-mode .text-dark {
-  color: #e6eef6 !important;
-}
-body.dark-mode .border-light {
-  border-color: #1f2a40 !important;
+/* === Logo přepínání ===
+   - .logo-light je výchozí varianta
+   - .logo-dark se zobrazí jen v tmavém režimu
+   ------------------------------------------------------------ */
+.logo-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+  .logo-light { display: none; }
+  .logo-dark { display: inline; }
 }
 
-/* === Navbar & Sidebar (desktop) === */
-body.dark-mode .navbar {
-  background-color: #1a2235 !important;
-  color: #e6eef6;
-  border-bottom: 1px solid #1f2a40;
-}
-body.dark-mode .sidebar-fixed {
-  background-color: #0f1320;
-  border-right-color: #1f2a40;
+
+/* === Root variables (dark mode override) ===
+   Přepisuje globální proměnné definované v base.css.
+   Používají se pro breadcrumb, odkazy a timestamp.
+   ------------------------------------------------------------ */
+[data-bs-theme="dark"] {
+  --breadcrumb-text: #e0e0e0;       /* Světle šedý text breadcrumb */
+  --breadcrumb-muted: #888;         /* Oddělovač v tmavém režimu */
+  --link-hover-color: #66b2ff;      /* Světlejší modrá při hoveru */
+  --breadcrumb-active: #aaa;        /* Aktivní položka breadcrumb */
+  --timestamp-color: #ccc;          /* Světlejší timestamp */
 }
 
-/* === Offcanvas sidebar (mobilní) === */
-body.dark-mode .offcanvas {
-  background-color: #0f1320;
-  color: #e6eef6;
-}
-body.dark-mode .offcanvas-header {
-  border-bottom: 1px solid #1f2a40;
-}
-body.dark-mode .offcanvas-title {
-  color: #e6eef6;
-}
-body.dark-mode .offcanvas-body {
-  background-color: #0f1320;
-  color: #e6eef6;
-}
-body.dark-mode .offcanvas .nav-link {
-  color: #e6eef6;
-}
-body.dark-mode .offcanvas .nav-link:hover {
-  background-color: #1a2235;
-  color: #8fb4ff;
-}
-body.dark-mode .offcanvas small.text-muted {
-  color: #9fb0c8 !important;
+
+/* ============================================================
+   Dark mode overrides for components
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy gauge prvků, tabulek a breadcrumb navigace.
+   ============================================================ */
+
+/* Gauge prvky */
+[data-bs-theme="dark"] .gauge-value { fill: #eee; }
+[data-bs-theme="dark"] .gauge-unit { fill: #aaa; }
+[data-bs-theme="dark"] .gauge-bg { stroke: #444; }
+[data-bs-theme="dark"] .gauge-label { color: #66b2ff; }
+[data-bs-theme="dark"] .gauge-end-label { fill: #aaa; }
+
+/* Tabulky */
+[data-bs-theme="dark"] .table-hover tbody tr:hover { background-color: #223; }
+[data-bs-theme="dark"] tbody tr:nth-child(even) { background-color: #1a1a1a; }
+[data-bs-theme="dark"] tbody tr:hover { background-color: #223; }
+[data-bs-theme="dark"] .chev-btn { color: #66b2ff; }
+
+/* Breadcrumb navigace */
+[data-bs-theme="dark"] #breadcrumb { color: var(--breadcrumb-text); }
+[data-bs-theme="dark"] .breadcrumb-sep { color: var(--breadcrumb-muted); }
+[data-bs-theme="dark"] .breadcrumb-item.active { color: var(--breadcrumb-active); }
+
+
+/* ============================================================
+   Dark mode overrides for layout
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy sidebaru a borderu pro tmavý režim.
+   ============================================================ */
+[data-bs-theme="dark"] .sidebar-fixed {
+  background-color: #1e1e1e;   /* tmavé pozadí */
+  border-right: 1px solid #444; /* tmavý oddělující border */
 }
 
-/* === Main content area === */
-body.dark-mode main {
-  background-color: #0b1220;
-  color: #e6eef6;
-}
-body.dark-mode .container-fluid,
-body.dark-mode .row {
-  background-color: #0b1220;
+
+/* ============================================================
+   Dark mode overrides for login page
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy login karty, formuláře, tlačítek a flash zpráv.
+   - Login část je pohromadě pro lepší přehlednost.
+   ============================================================ */
+
+[data-bs-theme="dark"] .login-card {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
 }
 
-/* === Karty, sekce, bloky === */
-body.dark-mode .card,
-body.dark-mode .section {
-  background-color: #1a2235;
-  color: #e6eef6;
-  border-color: #1f2a40;
-  box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+[data-bs-theme="dark"] .login-card h1 {
+  color: #66b2ff;
+}
+[data-bs-theme="dark"] .login-card p.lead {
+  color: #bbb;
 }
 
-/* === Vnitřní vrstvy sekcí (oprava světlého pásu) === */
-body.dark-mode .section .container,
-body.dark-mode .section .row,
-body.dark-mode .section .card-body,
-body.dark-mode .section .note,
-body.dark-mode .section .flash-list,
-body-dark-mode .section .content,
-body.dark-mode .section .bg-white,
-body.dark-mode .section .bg-light {
-  background-color: transparent !important;
-  color: inherit;
+[data-bs-theme="dark"] .login-form label {
+  color: #ccc;
+}
+[data-bs-theme="dark"] .login-form input {
+  background: #2a2a2a;
+  border: 1px solid #555;
+  color: #eee;
+}
+[data-bs-theme="dark"] .login-form input:focus {
+  border-color: #66b2ff;
+  box-shadow: 0 6px 18px rgba(102,178,255,0.25);
 }
 
-/* === Nadpisy a primární barvy === */
-body.dark-mode .text-primary,
-body.dark-mode h1,
-body.dark-mode h2,
-body.dark-mode h3 {
-  color: #8fb4ff !important;
+[data-bs-theme="dark"] .btn-login {
+  background: linear-gradient(180deg, #3399ff, #1a66cc);
+  box-shadow: 0 8px 18px rgba(51,153,255,0.25);
 }
 
-/* === Breadcrumb === */
-body.dark-mode #breadcrumb {
-  color: #e6eef6;
+[data-bs-theme="dark"] .login-actions {
+  color: #aaa;
 }
-body.dark-mode .breadcrumb-sep {
-  color: #6f8290;
-  opacity: 0.9;
+[data-bs-theme="dark"] .login-actions a {
+  color: #66b2ff;
 }
 
-/* === Form text (např. pod výběrem senzoru) === */
-body.dark-mode .form-text {
-  color: #9fb0c8 !important;
+[data-bs-theme="dark"] .login-note {
+  color: #999;
 }
 
-/* === Section note (např. "agreguji dny") === */
-body.dark-mode .section-note,
-body.dark-mode .section-note .text-muted,
-body-dark-mode #history-note {
-  color: #9fb0c8 !important;
+/* Flash zprávy na login stránce */
+[data-bs-theme="dark"] .flash-list li.success { background: #1f3d3d; color: #66ffcc; }
+[data-bs-theme="dark"] .flash-list li.info    { background: #1a2a40; color: #66b2ff; }
+[data-bs-theme="dark"] .flash-list li.danger  { background: #402020; color: #ff6666; }
+
+
+/* ============================================================
+   Dark mode overrides for navbar + main content
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy horní lišty (navbar) a hlavního bloku.
+   ============================================================ */
+
+/* Navbar */
+[data-bs-theme="dark"] .navbar {
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #444;
+}
+[data-bs-theme="dark"] .navbar .navbar-brand {
+  color: #ffffff;
+}
+[data-bs-theme="dark"] .navbar .btn {
+  border-color: #888;
+  color: #ddd;
 }
 
-/* === Tabulky === */
-body.dark-mode .table {
-  --bs-table-bg: #1a2235;
-  --bs-table-striped-bg: #1a1a1a;
-  --bs-table-striped-color: #e6eef6;
-  --bs-table-hover-bg: #2a334a;
-  --bs-table-hover-color: #e6eef6;
-  --bs-table-color: #e6eef6;
-  --bs-table-border-color: #2a334a;
+/* Hlavní blok obsahu */
+[data-bs-theme="dark"] main {
+  background-color: #121212;
+  color: #e0e0e0;
 }
 
-/* === Gauge prvky === */
-body.dark-mode .gauge-bg {
-  stroke: #444;
-}
-body.dark-mode .gauge-value {
-  fill: #ddd;
-}
-body.dark-mode .gauge-unit {
-  fill: #aaa;
+
+/* ============================================================
+   Dark mode overrides for global flash messages
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy Bootstrap alertů (flash zprávy).
+   ============================================================ */
+[data-bs-theme="dark"] .alert {
+  background-color: #333;
+  color: #eee;
+  border-color: #555;
 }
 
-/* === Login stránka === */
-body.dark-mode .login-container {
-  background-color: #0b1220;
-}
-body.dark-mode .login-card {
-  background-color: #1a2235;
-  border-color: rgba(255,255,255,0.04);
-}
-body.dark-mode .login-card h1,
-body.dark-mode .login-card .text-primary {
-  color: #8fb4ff !important;
-}
-body.dark-mode .login-card p.lead,
-body.dark-mode .login-note,
-body-dark-mode .login-actions {
-  color: #cbd6e4;
-}
-body.dark-mode .login-form input[type="text"],
-body-dark-mode .login-form input[type="password"],
-body-dark-mode .login-form input[type="email"] {
-  background: #071022;
-  border: 1px solid rgba(255,255,255,0.06);
-  color: #e6f2ff;
-  box-shadow: none;
-}
-body.dark-mode .btn-login {
-  box-shadow: 0 6px 18px rgba(11,95,255,0.18);
+
+/* ============================================================
+   Dark mode overrides for theme toggle button
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje vzhled tlačítka pro přepínání motivu.
+   ============================================================ */
+[data-bs-theme="dark"] #theme-toggle {
+  border-color: #888;
+  color: #ddd;
 }
 
-/* === Flash zprávy === */
-body.dark-mode .flash-list li.success {
-  background: rgba(6,60,48,0.12);
-  color: #9be6c9;
-  border: 1px solid rgba(4,98,70,0.06);
-}
-body.dark-mode .flash-list li.info {
-  background: rgba(7,43,122,0.12);
-  color: #b9d9ff;
-  border: 1px solid rgba(8,78,214,0.06);
-}
-body.dark-mode .flash-list li.danger {
-  background: rgba(120,8,8,0.12);
-  color: #ffb3b3;
-  border: 1px solid rgba(166,25,25,0.06);
+/* ============================================================
+   Dark mode overrides for offcanvas sidebar (mobilní verze)
+   ------------------------------------------------------------
+   Účel:
+   - Přepisuje barvy offcanvas menu pro tmavý režim.
+   - Zajišťuje konzistenci s fixním sidebarem.
+   ============================================================ */
+
+[data-bs-theme="dark"] .offcanvas {
+  background-color: #1e1e1e;   /* tmavé pozadí */
+  color: #e0e0e0;              /* světlý text */
 }
 
-/* === Ovládací prvky === */
-
-/* Checkbox */
-body.dark-mode .form-check-input {
-  background-color: #1a2235;
-  border: 1px solid #2a334a;
-}
-body.dark-mode .form-check-input:checked {
-  background-color: #0b5fff;
-  border-color: #0b5fff;
-}
-body.dark-mode .form-check-label {
-  color: #e6eef6;
+[data-bs-theme="dark"] .offcanvas-header {
+  border-bottom: 1px solid #444; /* oddělující border */
 }
 
-/* Select */
-body.dark-mode .form-select {
-  background-color: #1a2235;
-  border: 1px solid #2a334a;
-  color: #e6eef6;
-}
-body.dark-mode .form-select:focus {
-  border-color: #0b5fff;
-  box-shadow: 0 0 0 0.25rem rgba(11,95,255,0.25);
+[data-bs-theme="dark"] .offcanvas-title {
+  color: #ffffff; /* nadpis menu */
 }
 
-/* Range slider (setpoint) */
-body.dark-mode .form-range {
-  accent-color: #0b5fff;
-}
-body.dark-mode .form-range::-webkit-slider-thumb {
-  background: #0b5fff;
-  border: none;
-}
-body.dark-mode .form-range::-moz-range-thumb {
-  background: #0b5fff;
-  border: none;
-}
-body.dark-mode .form-range::-webkit-slider-runnable-track {
-  background: #2a334a;
-}
-body.dark-mode .form-range::-moz-range-track {
-  background: #2a334a;
+[data-bs-theme="dark"] .offcanvas-body a {
+  color: #c0c0c0; /* odkazy v menu */
+  text-decoration: none;
 }
 
-/* === Tlačítka === */
-body.dark-mode .btn-primary {
-  background-color: #0b5fff;
-  border-color: #0b5fff;
-  color: #fff;
+[data-bs-theme="dark"] .offcanvas-body a:hover {
+  color: #ffffff; /* hover efekt */
 }
-body.dark-mode .btn-primary:hover {
-  background-color: #084bcc;
-  border-color: #084bcc;
-}
-
-body.dark-mode .btn-outline-primary {
-  color: #8fb4ff;
-  border-color: #8fb4ff;
-}
-body.dark-mode .btn-outline-primary:hover {
-  background-color: #0b5fff;
-  color: #fff;
-}
-
-body.dark-mode .btn-outline-success {
-  color: #6fdc8c;
-  border-color: #6fdc8c;
-}
-body.dark-mode .btn-outline-success:hover {
-  background-color: #28a745;
-  color: #fff;
-}
-
-body.dark-mode .btn-outline-danger {
-  color: #ff7b7b;
-  border-color: #ff7b7b;
-}
-body.dark-mode .btn-outline-danger:hover {
-  background-color: #dc3545;
-  color: #fff;
-}
-
-body.dark-mode .btn-outline-secondary {
-  color: #cbd6e4;
-  border-color: #cbd6e4;
-}
-body.dark-mode .btn-outline-secondary:hover {
-  background-color: #6c757d;
-  color: #fff;
-}
-
-/* === Plotly grafy === */
-/* Použij v JS:
-const layout = {
-  paper_bgcolor: '#0b1220',
-  plot_bgcolor: '#0b1220',
-  font: { color: '#e6eef6' },
-  xaxis: { color: '#e6eef6' },
-  yaxis: { color: '#e6eef6' }
-};
-*/

@@ -1,15 +1,12 @@
 /* ============================================================
-   Login CSS
+   Login CSS (light mode)
    ------------------------------------------------------------
    Účel:
    - Styly pro přihlašovací stránku aplikace.
-   - Obsahuje vzhled kontejneru, karty, formuláře,
-     tlačítka, pomocné odkazy a flash zprávy.
+   - Světlý režim (výchozí).
+   - Tmavé varianty jsou v darkmode.css.
    ============================================================ */
 
-/* === Login page container and card ===
-   Kontejner centrovaný na stránce a samotná karta s formulářem.
-   ------------------------------------------------------------ */
 .login-container {
   display: flex;
   align-items: center;
@@ -21,7 +18,7 @@
 .login-card {
   width: 100%;
   max-width: 420px;
-  background: #fff;
+  background: #fff; /* světlý režim */
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(16, 24, 40, 0.08);
   padding: 1.6rem;
@@ -39,9 +36,7 @@
   font-size: 0.95rem;
 }
 
-/* === Form ===
-   Stylování formuláře, labelů a vstupních polí.
-   ------------------------------------------------------------ */
+/* Form */
 .login-form {
   display: grid;
   gap: 0.75rem;
@@ -67,9 +62,7 @@
   box-shadow: 0 6px 18px rgba(11,95,255,0.06);
 }
 
-/* === Submit button ===
-   Tlačítko pro odeslání přihlášení.
-   ------------------------------------------------------------ */
+/* Submit button */
 .btn-login {
   width: 100%;
   padding: 0.7rem 0.9rem;
@@ -88,9 +81,7 @@
   outline-offset: 2px;
 }
 
-/* === Actions and helper links ===
-   Odkazy pod formulářem (např. zapomenuté heslo).
-   ------------------------------------------------------------ */
+/* Actions and helper links */
 .login-actions {
   display: flex;
   justify-content: space-between;
@@ -108,9 +99,7 @@
   color: #7b8a95;
 }
 
-/* === Flash messages ===
-   Stylování informačních zpráv (success, info, danger).
-   ------------------------------------------------------------ */
+/* Flash messages */
 .flash-list {
   margin: 0 0 0.75rem;
   padding: 0;

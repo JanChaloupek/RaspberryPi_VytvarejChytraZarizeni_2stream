@@ -51,10 +51,14 @@ export let currentKey = todayKey();
  * @returns {Promise<void>}
  */
 export async function loadSensors() {
-  console.debug('[sensors] loadSensors start');
   try {
     const sensors = await getSensors();
     const sel = document.getElementById('sensor_select');
+    if (!sel) {
+      console.error('[sensors] #sensor_select not found in DOM');
+      return;
+    }
+
     const newSel = sel.cloneNode(false);
     sel.parentNode.replaceChild(newSel, sel);
 
@@ -76,6 +80,8 @@ export async function loadSensors() {
 
       await loadLatest();
       await loadAggregate();
+      // refresh aktuátorů pro nový senzor
+      import('./actuators.js').then(m => m.refreshActuators());      
     });
 
     if (sensors.length) {

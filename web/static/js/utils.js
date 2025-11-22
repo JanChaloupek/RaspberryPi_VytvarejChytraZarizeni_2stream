@@ -103,15 +103,16 @@ export function parseLocalKey(key) {
  */
 export function formatKeyForCzechDisplay(key, level) {
   if (!key) return '--';
-  const d = parseLocalKey(key);
-  const pad = (n) => String(n).padStart(2, '0');
+  // Převedeme ISO string na Date objekt (prohlížeč si sám převede na lokální čas)
+  const date = new Date(key);
+  console.info('[api] - key, date', key, date)
 
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const hour = pad(d.getHours());
-  const minute = pad(d.getMinutes());
-  const second = pad(d.getSeconds());
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // měsíce jsou 0–11
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
 
   switch (level) {
     case 'monthly': return `${month}.${year}`;

@@ -2,40 +2,24 @@
    Component CSS
    ------------------------------------------------------------
    Účel:
-   - Obsahuje styly pro jednotlivé komponenty dashboardu:
-     grafy, legendy, gauge prvky, breadcrumb navigaci,
-     tabulky a ovládací prvky.
-   - Navazuje na base.css (root variables) a layout.css.
-   - Slouží k vizuálnímu sjednocení interaktivních prvků.
+   - Styly pro komponenty dashboardu (grafy, gauge, breadcrumb,
+     tabulky, ovládací prvky).
+   - Světlý režim (výchozí).
+   - Tmavé varianty jsou v darkmode.css.
    ============================================================ */
 
-/* === Plot container ===
-   Kontejner pro Plotly grafy.
-   - width: 100% → graf se roztáhne na celou šířku rodiče
-   - display: block → zajistí blokový kontext
-   ------------------------------------------------------------ */
+/* === Plot container === */
 #plot-container {
   width: 100%;
   display: block;
 }
 
-/* === Plot legend spacing ===
-   Odsazení vlastní legendy pod grafem.
-   - margin-top: 3rem → větší mezera mezi grafem a legendou
-   ------------------------------------------------------------ */
+/* === Plot legend spacing === */
 .card #plot-legend {
-  margin-top: 3.00rem !important; /* zvětši podle potřeby */
+  margin-top: 3rem !important;
 }
 
-/* === Gauge SVG ===
-   Styly pro SVG gauge komponenty (měřáky).
-   - gauge-block: mezera pod blokem
-   - gauge-value: hodnota uprostřed gauge
-   - gauge-unit: jednotka (např. °C, %)
-   - gauge-fill/bg: výplň a pozadí gauge
-   - gauge-label: hlavní popisek gauge
-   - gauge-end-label: popisky na konci gauge
-   ------------------------------------------------------------ */
+/* === Gauge SVG === */
 .gauge-block { margin-bottom: 1rem; }
 .gauge-value { font-size: 1.2em; fill: #333; text-anchor: middle; }
 .gauge-unit { font-size: 0.8em; fill: #666; text-anchor: middle; }
@@ -44,18 +28,10 @@
 .gauge-label { margin-top: calc(-2.5rem + -1vw); font-size: 1.5rem; font-weight: 600; text-align: center; color: #00796b; }
 .gauge-end-label { font-size: clamp(0.25rem, 0.3rem + 0.2vw, 0.4rem); fill: #666; font-weight: 500; pointer-events: none; dominant-baseline: hanging; }
 
-/* Responsive gauge labels
-   - Přizpůsobení velikosti popisků pro malé a střední obrazovky
-   ------------------------------------------------------------ */
 @media (max-width: 420px) { .gauge-end-label { font-size: 0.25rem; } }
 @media (min-width: 576px) { .gauge-end-label { font-size: 0.35rem; } }
 
-/* === Breadcrumb ===
-   Navigační lišta (breadcrumb).
-   - Flex layout, barvy z root variables
-   - Hover/focus efekty pro odkazy
-   - Aktivní položka zvýrazněná
-   ------------------------------------------------------------ */
+/* === Breadcrumb === */
 #breadcrumb {
   display: flex;
   align-items: center;
@@ -82,21 +58,13 @@
 .breadcrumb-item.active + .breadcrumb-sep { display: none; }
 .breadcrumb-link-disabled { color: var(--breadcrumb-active); font-weight: 600; cursor: default; }
 
-/* Responsive tweaks for breadcrumb
-   - Menší mezery a font-size na mobilních zařízeních
-   ------------------------------------------------------------ */
 @media (max-width: 420px) {
   :root { --breadcrumb-sep-gap: 0.35rem; --breadcrumb-font-size: 0.9rem; }
   .breadcrumb-sep { font-size: 0.9em; margin: 0 0.25rem; }
   .breadcrumb-item-link, .breadcrumb-item-home-link { padding: 2px 4px; }
 }
 
-/* === Table styling ===
-   Styly pro tabulky.
-   - Hover efekty, zebra striping
-   - Klikatelné řádky
-   - Zarovnání buněk
-   ------------------------------------------------------------ */
+/* === Table styling === */
 .table-hover tbody tr:hover { background-color: #e0f7fa; }
 .clickable-row { cursor: pointer; }
 .clickable-row:hover { background-color: #e8f3ff; }
@@ -110,9 +78,7 @@ tbody tr:hover { background-color: #e0f7fa; }
 .chev-btn { border: none; background: transparent; padding: 0; margin: 0; font-size: 1rem; color: #0b5fff; cursor: pointer; }
 .chev-btn .chev { font-weight: 600; }
 
-/* === Theme toggle button ===
-   Styl pro tlačítko přepínání motivu (light/dark).
-   ------------------------------------------------------------ */
+/* === Theme toggle button === */
 #theme-toggle {
   line-height: 1;
   padding: 0.25rem 0.5rem;

@@ -9,7 +9,14 @@
      component.css, layout.css, darkmode.css atd.
    ============================================================ */
 
-/* === Root variables ===
+:root {
+  --plot-bg: #ffffff;
+  --plot-area-bg: #fafafa;
+  --plot-text: #333;
+  --plot-axis: #555;
+}
+
+/* === Root variables (light mode) ===
    Globální proměnné pro barvy a typografii breadcrumbu,
    odkazy a výšku navigační lišty.
    ------------------------------------------------------------ */
@@ -20,6 +27,7 @@
   --breadcrumb-font-size: 0.95rem;  /* Velikost písma breadcrumb */
   --link-hover-color: #0b5fff;      /* Barva odkazů při hoveru */
   --breadcrumb-active: #6c757d;     /* Barva aktivní položky breadcrumb */
+  --timestamp-color: #555;          /* Barva textu timestamp */
   --navbar-height: 56px;            /* Výška navigační lišty */
 }
 
@@ -35,5 +43,5 @@
    ------------------------------------------------------------ */
 #timestamp {
   font-weight: 500; /* Polotučné písmo */
-  color: #555;      /* Neutrální šedá barva textu */
+  color: var(--timestamp-color); /* Používá proměnnou podle režimu */
 }

@@ -11,33 +11,20 @@
 // - helpers.js (funkce fetchWrappedJson)
 //
 // Konfigurace:
-// - API_BASE = '/api/actuators' (základní cesta pro REST API)
-//
-// Funkce:
-// - callActorApi(actorName, method, body)
-//   → Volá API pro daný aktuátor (LED/relay).
-//   → Parametry:
-//      - actorName: jméno aktuátoru (string, povinné)
-//      - method: HTTP metoda ("GET" nebo "POST", default "GET")
-//      - body: volitelný JSON payload (např. {on:true}, {mode:"auto"})
-//   → Vrací Promise s JSON odpovědí.
-//   → Při chybě vyhodí výjimku.
-//
-// - callSetpointApi(actorName, method, body)
-//   → Volá API pro setpoint aktuátoru (relay).
-//   → Parametry:
-//      - actorName: jméno aktuátoru (string, povinné)
-//      - method: HTTP metoda ("GET" nebo "POST", default "GET")
-//      - body: volitelný JSON payload (např. {value:22.5})
-//   → Vrací Promise s JSON odpovědí.
-//   → Při chybě vyhodí výjimku.
-//
+// - API_BASE = '/api/actuator' (základní cesta pro REST API)
 // ----------------------------------------------------
 
 import { fetchWrappedJson } from './helpers.js';
 
 const API_BASE = '/api/actuator';
 
+/**
+ * Volá API pro LED aktuátor.
+ * @param {string} sensorId - ID senzoru
+ * @param {string} [method="GET"] - HTTP metoda ("GET" nebo "POST")
+ * @param {object|null} body - volitelný JSON payload (např. {on:true})
+ * @returns {Promise<object>} čistý result z API
+ */
 export async function callLedApi(sensorId, method = "GET", body = null) {
   const url = `${API_BASE}/${encodeURIComponent(sensorId)}/led`;
   const init = { method, headers: {} };
@@ -45,9 +32,24 @@ export async function callLedApi(sensorId, method = "GET", body = null) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
-  return fetchWrappedJson(url, init);
+  console.info(`[API] LED ${method}`, url, body || '');
+  try {
+    const result = await fetchWrappedJson(url, init);
+    console.info('[API] LED result', result);
+    return result;
+  } catch (err) {
+    console.error('[API] LED error', err);
+    throw err;
+  }
 }
 
+/**
+ * Volá API pro relé aktuátor.
+ * @param {string} sensorId - ID senzoru
+ * @param {string} [method="GET"] - HTTP metoda ("GET" nebo "POST")
+ * @param {object|null} body - volitelný JSON payload (např. {mode:"auto"})
+ * @returns {Promise<object>} čistý result z API
+ */
 export async function callRelayApi(sensorId, method = "GET", body = null) {
   const url = `${API_BASE}/${encodeURIComponent(sensorId)}/relay`;
   const init = { method, headers: {} };
@@ -55,9 +57,24 @@ export async function callRelayApi(sensorId, method = "GET", body = null) {
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
-  return fetchWrappedJson(url, init);
+  console.info(`[API] Relay ${method}`, url, body || '');
+  try {
+    const result = await fetchWrappedJson(url, init);
+    console.info('[API] Relay result', result);
+    return result;
+  } catch (err) {
+    console.error('[API] Relay error', err);
+    throw err;
+  }
 }
 
+/**
+ * Volá API pro setpoint relé.
+ * @param {string} sensorId - ID senzoru
+ * @param {string} [method="GET"] - HTTP metoda ("GET" nebo "POST")
+ * @param {object|null} body - volitelný JSON payload (např. {value:22.5})
+ * @returns {Promise<object>} čistý result z API
+ */
 export async function callRelaySetpointApi(sensorId, method = "GET", body = null) {
   const url = `${API_BASE}/${encodeURIComponent(sensorId)}/relay/setpoint`;
   const init = { method, headers: {} };
@@ -65,5 +82,13 @@ export async function callRelaySetpointApi(sensorId, method = "GET", body = null
     init.headers["Content-Type"] = "application/json";
     init.body = JSON.stringify(body);
   }
-  return fetchWrappedJson(url, init);
+  console.info(`[API] Setpoint ${method}`, url, body || '');
+  try {
+    const result = await fetchWrappedJson(url, init);
+    console.info('[API] Setpoint result', result);
+    return result;
+  } catch (err) {
+    console.error('[API] Setpoint error', err);
+    throw err;
+  }
 }

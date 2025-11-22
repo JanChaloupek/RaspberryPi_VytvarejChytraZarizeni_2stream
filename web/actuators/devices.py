@@ -39,7 +39,13 @@ class LedDevice:
         self.name: str = name
         self.pin: Optional[int] = pin
         self._state: bool = False
-        self._device: Optional[LED] = LED(pin) if pin is not None else None
+        self._device: Optional[LED] = None
+        try:
+            if pin is not None:
+                self._device = LED(pin)
+        except Exception as ex:
+            logger.exception(ex)
+            self._device = None
 
     def set_state(self, on: bool) -> None:
         """
@@ -98,7 +104,13 @@ class RelayDevice:
         self._state: bool = False
         self.mode: str = "auto"
         self.setpoint: float = 25.0
-        self._device: Optional[OutputDevice] = OutputDevice(pin) if pin is not None else None
+        self._device: Optional[OutputDevice] = None
+        try:
+            if pin is not None:
+                self._device = OutputDevice(pin)
+        except Exception as ex:
+            logger.exception(ex)
+            self._device = None
 
     def set_state(self, on: bool) -> None:
         """

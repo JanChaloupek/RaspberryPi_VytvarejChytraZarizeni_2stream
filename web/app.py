@@ -21,6 +21,7 @@ from services.aggregate_service import api_aggregate, compute_dew_point
 from services.api_utils import make_api_response, make_api_response_error, getQueryDataSensors, getQueryDataLatest, getQueryDataAggregate, getQueryLogsTail, getQueryLed, getQueryRelay, getQueryRelaySetpoint
 from services.api_actuators import api_get_logs, api_read_led, api_write_led, api_read_relay, api_write_relay, api_read_setpoint, api_write_setpoint
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 
 act: Optional[ActuatorManager] = None
@@ -40,9 +41,12 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Pro pokračování se prosím přihlašte."
 
 # uživatelé s hesly a rolemi (v produkci vycist z DB - chtělo by to rozhrani pro administraci uzivatelu)
+pwAdmin = "scrypt:32768:8:1$xAOzlgCDaorrbonm$2922c20d47f900f10fdaf6fc4a7e39debb4061cfb6daa24422520888f45441d0613c52f03d59e64f5848cc53fe73ff0bffb1fc2574f3cd8fc68346441fe36de9"
+pwUser  = "scrypt:32768:8:1$q8R2Sf4a97wDA3hR$c53a71de46c6104fc81f8f1cb33f3d946da2779b18ef408e063a70c7f6570a588b35850d3fddf52bf5515785ec766e70ab95761ef13e546d977cf795c5cdecba"
+
 _users = {
-    "admin": {"password": "heslo357", "role": "admin"},
-    "user": {"password": "heslo", "role": "user"},
+    "admin": {"password": pwAdmin, "role": "admin"},
+    "user": {"password": pwUser, "role": "user"},
 }
 
 class User(UserMixin):
@@ -93,26 +97,25 @@ sensor_map = {
 @app.context_processor
 def inject_assets():
     """
-    Vlozi potrebne promenne pro http render
+    Injects required variables for HTTP render.
 
     Returns:
-        json: promenne do vykreslovaciho enginu
+        dict: variables for the rendering engine
     """
     static_path = app.static_folder
 
-    # favicon
-    favicon_filename = None
-    for ext in ['ico', 'png', 'svg']:
-        filename = f'favicon.{ext}'
-        full_path = os.path.join(static_path, filename)
-        if os.path.exists(full_path):
-            favicon_filename = filename
-            break
+    def find_favicon(name):
+        for ext in ['ico', 'png', 'svg']:
+            filename = os.path.join('img', f'{name}.{ext}')
+            full_path = os.path.join(static_path, filename)
+            if os.path.exists(full_path):
+                return filename
+        return None
 
     return {
-        "favicon_filename": favicon_filename,
+        "favicon_light": find_favicon("favicon"),
+        "favicon_dark": find_favicon("favicon-dark"),
     }
-
 @app.route("/")
 @login_required
 def home_page():
@@ -131,27 +134,25 @@ def api_me():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # jednoduchý login
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
         user_rec = _users.get(username)
-        if user_rec and password == user_rec.get('password'):
+        if user_rec and check_password_hash(user_rec["password"], password):
             user = User(username)
             login_user(user)
             flash("Přihlášení proběhlo úspěšně.", "success")
             session["username"] = username
             session["role"] = user_rec["role"]
-            # přesměrování na původně požadovanou stránku
             next_page = request.args.get('next') or url_for('home_page')
             return redirect(next_page)
         else:
             flash("Neplatné uživatelské jméno nebo heslo.", "danger")
-            return render_template('login/login.jinja', username=username)
+            return render_template('login.jinja', username=username)
 
     # GET
-    return render_template('login/login.jinja', username='')
+    return render_template('login.jinja', username='')
 
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -202,34 +203,30 @@ def api_aggregate_level(sensor_id, level, key):
     tz_name = request.args.get('tz')
     tz_offset = request.args.get('tz_offset')
     tzinfo = resolve_tz(tz_name, tz_offset)
-
     # ziskej data podle pozadovane urovne a vybraného období
     errorCode, errorMessage, result, start_iso, end_iso, group_by = api_aggregate(sensor_id, level, key, tzinfo)
+    print("Aggregate", sensor_id, level, key, start_iso, end_iso, group_by)
     query = getQueryDataAggregate(sensor_id, level, key, tz_name, tz_offset, tzinfo, start_iso, end_iso, group_by)
     if errorCode is not None:
         # nastala chyba -> zamitava odpoved
         return make_api_response_error(query, errorMessage, errorCode)
 
-    # vracim odpoved        
-    return make_api_response(query, result, log=3)        # loguje maximalne 3 radky dat ziskanych z DB
+    # vracim odpoved
+    return make_api_response(query, result, log=True)        # loguje maximalne 3 radky dat ziskanych z DB
 
 
 @app.route('/api/actuator/<sensor_id>/led', methods=['GET', 'POST'])
 @login_required
 def api_led(sensor_id):
-    print("/api/actuator/<sensor_id>/led - 1", sensor_id)
     query = getQueryLed(sensor_id, request.method)
-    print("/api/actuator/<sensor_id>/led - 2", query, request.method)
 
     if request.method == 'GET':
-        print("/api/actuator/<sensor_id>/led - 3 GET")
         return api_read_led(act, sensor_id, query)
 
     # POST    
     if not is_admin():
         return adminNeeded_response(query)
 
-    print("/api/actuator/<sensor_id>/led - 3 PUT")
     return api_write_led(act, sensor_id, request, query)
 
 @app.route('/api/actuator/<sensor_id>/relay', methods=['GET', 'POST'])
@@ -271,6 +268,15 @@ def api_logs_tail():
         return adminNeeded_response(query)  # pokud je nemas, odpovez ze je potrebujes
 
     return api_get_logs(LOG_FILE, 200)
+
+
+@app.route("/styleguide")
+def styleguide():
+    if not is_admin():
+        return adminNeeded_response({})
+
+    return render_template("styleguide.jinja")
+
 
 import signal
 import sys

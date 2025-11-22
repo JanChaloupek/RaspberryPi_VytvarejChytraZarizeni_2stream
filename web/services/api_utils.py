@@ -131,7 +131,7 @@ def getQueryLogsTail() -> Dict[str, str]:
 def log_data(key: str, num: int | bool, data: Any) -> None:
     """
     Ladicí logování dat (result/error).
-    Pokud je data list, vypíše prvních num položek.
+    Pokud je data list, vypíše prvních num položek a vždy i poslední záznam.
 
     Parametry:
     - key: název logované položky
@@ -140,11 +140,20 @@ def log_data(key: str, num: int | bool, data: Any) -> None:
     """
     if isinstance(data, list):
         max_items = None if num is True else int(num)
+        last_index = len(data) - 1
+        useBreak = False
         for count, item in enumerate(data, start=1):
-            suffix = "  ..." if max_items is not None and count >= max_items else ""
-            logger.debug(f"      {key}[]{item}{suffix}")
+            suffix = ""
+            # pokud jsme přes limit, přidáme "..." a ukončíme cyklus
             if max_items is not None and count >= max_items:
-                break
+                suffix = "  ..."
+                useBreak = True
+            logger.debug(f"      {key}[]{item}{suffix}")
+            if useBreak:
+                break                
+        # vždy zalogujeme poslední záznam, pokud není už zahrnut
+        if last_index >= 0 and (max_items is None or last_index >= max_items):
+            logger.debug(f"      {key}[]{data[-1]}{'  last'}")
     else:
         logger.debug(f"      {key}{data}")
 
@@ -169,15 +178,18 @@ def make_api_response(query: Dict[str, Any],
     """
     payload: Dict[str, Any] = {"query": query}
     if result is not None:
+        payload["result"] = result
         if log:
             log_data("result", log, result)
-        payload["result"] = result
     if error is not None:
+        payload["error"] = error
         if log:
             log_data("error", log, error)
-        payload["error"] = error
         logger.error("API error: %s", error)
-    # print(payload)   # ← přidej
+    # payload["test"] = [
+    #     {"info": "This is a test field to verify API responsiveness."}
+    # ]
+    # print(payload)
     return jsonify(payload), status
 
 

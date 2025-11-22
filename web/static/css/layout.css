@@ -8,19 +8,12 @@
    - Používá root proměnné (např. --navbar-height) z base.css.
    ============================================================ */
 
-/* === Layout fix: padding pro fixed-top navbar ===
-   Přidává horní odsazení obsahu, aby se neschovával pod navbar.
-   ------------------------------------------------------------ */
+/* === Layout fix: padding pro fixed-top navbar === */
 .pt-navbar {
   padding-top: var(--navbar-height);
 }
 
-/* === Sidebar (pevný postranní panel) ===
-   - Umístěn fixně vlevo pod navbar.
-   - Šířka odpovídá ~col-lg-2 (16.666%).
-   - Obsah je scrollovatelný (overflow-y: auto).
-   - Světlé pozadí a oddělující border.
-   ------------------------------------------------------------ */
+/* === Sidebar (pevný postranní panel) === */
 .sidebar-fixed {
   position: fixed;
   top: var(--navbar-height);
@@ -28,24 +21,18 @@
   bottom: 0;
   width: 16.666%; /* ~col-lg-2 */
   overflow-y: auto;
-  background-color: #f8f9fa;
-  border-right: 1px solid #dee2e6;
+  background-color: #f8f9fa;       /* světlý režim */
+  border-right: 1px solid #dee2e6; /* světlý režim */
 }
 
-/* === Main content offset (desktop) ===
-   Při větších obrazovkách (≥992px) se hlavní obsah
-   odsune doprava o šířku sidebaru.
-   ------------------------------------------------------------ */
+/* === Main content offset (desktop) === */
 @media (min-width: 992px) {
   main {
     margin-left: 16.666%;
   }
 }
 
-/* === Section scroll margin ===
-   Nastavuje scroll-margin-top pro sekce, aby při navigaci
-   (anchor odkazy) nebyl obsah schovaný pod navbar.
-   ------------------------------------------------------------ */
+/* === Section scroll margin === */
 section {
   scroll-margin-top: var(--navbar-height);
 }

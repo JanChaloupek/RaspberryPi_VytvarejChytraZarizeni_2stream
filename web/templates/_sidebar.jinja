@@ -7,10 +7,11 @@
    - Obsah sidebaru je rozdělen do dvou částí:
      - _sidebar_menu.jinja → navigační menu
      - _sidebar_user.jinja → informace o uživateli + login/logout
+   - Barvy sidebaru se řídí přes layout.css (light) a darkmode.css (dark).
    ============================================================ #}
 
 <!-- Fixní sidebar pro >= lg -->
-<aside class="d-none d-lg-block sidebar-fixed bg-white border-end py-3">
+<aside class="d-none d-lg-block sidebar-fixed py-3">
   <div class="px-3 d-flex flex-column h-100">
     {% include "sidebar/_sidebar_menu.jinja" %}
     {% include "sidebar/_sidebar_user.jinja" %}

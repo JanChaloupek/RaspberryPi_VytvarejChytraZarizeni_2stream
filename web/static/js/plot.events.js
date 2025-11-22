@@ -1,150 +1,125 @@
 // static/js/plot.events.js
-// Modul pro obsluhu událostí a inicializaci grafu.
+// Modul pro obsluhu událostí grafů.
 // ----------------------------------------------------
 // Účel:
-// - Naslouchá custom eventu 'history-range-changed' z table.js a reaguje načtením grafu.
-// - Obsluhuje tlačítko "Obnovit" pro ruční refresh grafu.
-// - Inicializuje graf po načtení DOM (DOMContentLoaded).
-// - Udržuje stav posledních parametrů pro fetchAndPlot, aby bylo možné obnovit stejné vykreslení.
+// - Spravuje interakce uživatele s grafem (změna typu, překreslení, změna tématu).
+// - Reaguje na události aplikace (history-range-changed) a zajišťuje načtení nových dat.
+// - Inicializuje výchozí graf po načtení stránky.
+// - Odděluje logiku událostí od logiky API a renderování.
 //
 // Závislosti:
-// - plot.api.js (funkce fetchAndPlot)
-// - plot.utils.js (funkce todayKey)
+// - plot.api.js (fetchAndPlot)
+// - plot.render.js (renderPlot)
+// - Knihovna Plotly (globální objekt)
 //
-// Funkce:
+// Exportované funkce:
+// - applyPlotType(type)
+//   → Změní typ grafu (scatter, bar, ...).
 // - initPlotEvents()
-//   → Připojí posluchače k UI prvkům a událostem.
-//   → Naslouchá 'history-range-changed' a načítá graf.
-//   → Obsluhuje tlačítko "Obnovit".
-//   → Inicializuje graf po DOMContentLoaded.
-// - lastParams (globální stav) → uchovává naposledy použité parametry pro fetchAndPlot.
+//   → Inicializuje všechny posluchače událostí (DOMContentLoaded, history-range-changed,
+//     změna typu grafu, změna tématu).
+//
+// Interní funkce:
+// - rerenderPlots()
+//   → Překreslí graf s uloženými daty (_meta).
 //
 // ----------------------------------------------------
 
 import { fetchAndPlot } from './plot.api.js';
-import { todayKey } from './plot.utils.js';
+import { renderPlot } from './plot.render.js';
 
 /**
  * applyPlotType()
  * ----------------------------------------------------
- * Přepne typ grafu podle hodnoty selectu.
+ * Změní typ grafu (např. scatter, bar).
+ * - Používá Plotly.restyle() na #plot-container.
+ * - Pokud Plotly nebo container chybí, zaloguje varování.
  *
- * @param {string} type Hodnota z <select id="plot-type">
+ * @param {string} type - nový typ grafu
  */
 export function applyPlotType(type) {
-  if (type === 'line') {
-    Plotly.restyle('plot-container', { type: 'scatter', mode: 'lines' });
-  } else if (type === 'scatter') {
-    Plotly.restyle('plot-container', { type: 'scatter', mode: 'markers' });
-  } else if (type === 'bar') {
-    Plotly.restyle('plot-container', { type: 'bar' });
+  const plotContainer = document.getElementById('plot-container');
+  if (!plotContainer) {
+    console.warn('[plot.events] applyPlotType: #plot-container nebyl nalezen');
+    return;
+  }
+  if (typeof Plotly === 'undefined') {
+    console.warn('[plot.events] applyPlotType: Plotly není načten');
+    return;
+  }
+  console.info('[plot.events] applyPlotType', type);
+  try {
+    Plotly.restyle(plotContainer, { type });
+  } catch (err) {
+    console.error('[plot.events] applyPlotType error', err);
   }
 }
 
 /**
- * Stav: naposledy použitý parametr pro fetchAndPlot,
- * aby šlo znovu obnovit stejné vykreslení.
- * @type {object|null}
+ * rerenderPlots()
+ * ----------------------------------------------------
+ * Překreslí graf s uloženými daty.
+ * - Používá renderPlot() s normalized daty z _meta.
+ * - Pokud data chybí, zaloguje varování.
  */
-let lastParams = null;
+function rerenderPlots() {
+  const plotContainer = document.getElementById('plot-container');
+  if (!plotContainer) {
+    console.warn('[plot.events] rerenderPlots: #plot-container nebyl nalezen');
+    return;
+  }
+
+  if (!plotContainer._meta || !plotContainer._meta.normalized) {
+    console.warn('[plot.events] rerenderPlots: žádná data k překreslení');
+    return;
+  }
+
+  console.info('[plot.events] rerenderPlots triggered', plotContainer._meta);
+  const { normalized, params } = plotContainer._meta;
+  try {
+    renderPlot(normalized, params);
+  } catch (err) {
+    console.error('[plot.events] rerenderPlots error', err);
+  }
+}
 
 /**
  * initPlotEvents()
  * ----------------------------------------------------
- * Připojí posluchače k UI prvkům a událostem, provede volitelnou inicializaci.
- * - Naslouchá custom eventu 'history-range-changed' z table.js.
- * - Obsluhuje tlačítko "Obnovit".
- * - Inicializuje graf po načtení DOM.
+ * Inicializuje události pro grafy.
+ * - Načte defaultní graf po DOMContentLoaded.
+ * - Reaguje na událost 'history-range-changed' → načte nový graf.
+ * - Připojí listener na select #plot-type → mění typ grafu.
+ * - Sleduje změnu tématu (data-bs-theme) → překreslí graf.
  */
 export function initPlotEvents() {
-  const plotRefreshBtn = document.getElementById('plot-refresh');
-  const sensorSelect = document.getElementById('sensor_select');
-  const plotRangeLabel = document.getElementById('plot-range');
+  console.info('[plot.events] initPlotEvents called');
+
+  // Listener na změnu rozsahu historie
+  window.addEventListener('history-range-changed', e => {
+    console.info('[plot.events] history-range-changed', e.detail);
+    fetchAndPlot(e.detail);
+  });
+
+  // Listener na změnu typu grafu
   const plotTypeSelect = document.getElementById('plot-type');
-
-  /**
-   * Listener: history-range-changed
-   * ----------------------------------------------------
-   * Reaguje na custom event z table.js.
-   * - Doplní chybějící parametry (sensor_id, level, key).
-   * - Uloží parametry do lastParams.
-   * - Nastaví label na "Načítám...".
-   * - Zavolá fetchAndPlot() s parametry.
-   */
-  window.addEventListener('history-range-changed', (ev) => {
-    const d = ev.detail || {};
-    if (!d.sensor_id) d.sensor_id = sensorSelect?.value || null;
-    if (!d.level) d.level = 'hourly';
-    if (!d.key) d.key = todayKey();
-
-    lastParams = d;
-    if (plotRangeLabel) plotRangeLabel.textContent = 'Načítám...';
-    fetchAndPlot(d).catch(err => {
-      if (plotRangeLabel) plotRangeLabel.textContent = 'Chyba';
-      console.error('history-range-changed -> fetchAndPlot error', err);
+  if (plotTypeSelect) {
+    plotTypeSelect.addEventListener('change', e => {
+      applyPlotType(e.target.value);
     });
-  });
+  } else {
+    console.warn('[plot.events] initPlotEvents: #plot-type nebyl nalezen');
+  }
 
-  /**
-   * Listener: kliknutí na tlačítko "Obnovit"
-   * ----------------------------------------------------
-   * - Použije lastParams, pokud existují.
-   * - Jinak sestaví výchozí parametry (aktuální senzor, hourly, todayKey).
-   * - Nastaví label na "Načítám...".
-   * - Zavolá fetchAndPlot() s parametry.
-   */
-  plotRefreshBtn?.addEventListener('click', () => {
-    const params = lastParams || {
-      sensor_id: sensorSelect?.value || 'DHT11_01',
-      level: 'hourly',
-      key: todayKey(),
-      tz: Intl?.DateTimeFormat().resolvedOptions().timeZone,
-      tz_offset: new Date().getTimezoneOffset() * -1,
-    };
-    lastParams = params;
-    if (plotRangeLabel) plotRangeLabel.textContent = 'Načítám...';
-    fetchAndPlot(params).catch(err => {
-      if (plotRangeLabel) plotRangeLabel.textContent = 'Chyba';
-      console.error('refresh click -> fetchAndPlot error', err);
-    });
-  });
-
-  // Obsluha změny typu grafu
-  plotTypeSelect?.addEventListener('change', (ev) => {
-    const type = ev.target.value;
-    if (type === 'line') {
-      Plotly.restyle('plot-container', { type: 'scatter', mode: 'lines' });
-    } else if (type === 'scatter') {
-      Plotly.restyle('plot-container', { type: 'scatter', mode: 'markers' });
-    } else if (type === 'bar') {
-      Plotly.restyle('plot-container', { type: 'bar' });
+  // Observer pro změnu tématu (dark/light)
+  const observer = new MutationObserver(mutations => {
+    for (const m of mutations) {
+      if (m.attributeName === 'data-bs-theme') {
+        const theme = document.documentElement.getAttribute('data-bs-theme');
+        console.info('[plot.events] Theme changed to', theme);
+        rerenderPlots();
+      }
     }
   });
-
-  /**
-   * Listener: DOMContentLoaded
-   * ----------------------------------------------------
-   * - Po načtení DOM zkontroluje, zda je vybraný senzor.
-   * - Pokud ano, sestaví parametry a načte výchozí graf.
-   * - Nastaví label na "Načítám...".
-   * - Zavolá fetchAndPlot() s parametry.
-   */
-  document.addEventListener('DOMContentLoaded', () => {
-    const sensor = sensorSelect?.value;
-    if (sensor) {
-      const params = {
-        sensor_id: sensor,
-        level: 'hourly',
-        key: todayKey(),
-        tz: Intl?.DateTimeFormat().resolvedOptions().timeZone,
-        tz_offset: new Date().getTimezoneOffset() * -1,
-      };
-      lastParams = params;
-      if (plotRangeLabel) plotRangeLabel.textContent = 'Načítám...';
-      fetchAndPlot(params).catch(err => {
-        if (plotRangeLabel) plotRangeLabel.textContent = 'Chyba';
-        console.error('DOMContentLoaded -> fetchAndPlot error', err);
-      });
-    }
-  });
+  observer.observe(document.documentElement, { attributes: true });
 }

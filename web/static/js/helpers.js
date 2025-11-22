@@ -61,13 +61,13 @@ export function getQueryParam(name) {
  */
 export async function fetchWrappedJson(url, opts) {
   const res = await fetch(url, opts);
-  console.debug('[fetchWrappedJson] raw response', res.status, res.statusText);
+//  console.info('[fetchWrappedJson] raw response', res.status, res.statusText);
   if (!res.ok) {
     const text = await res.text().catch(()=>null);
     throw new Error(`${res.status} ${res.statusText}${text ? ': '+text : ''}`);
   }
   const payload = await res.json();
-  console.debug('[fetchWrappedJson] payload', payload);
+//  console.info('[fetchWrappedJson] payload', payload);
   if (payload.error) {
     throw new Error(payload.error);
   }

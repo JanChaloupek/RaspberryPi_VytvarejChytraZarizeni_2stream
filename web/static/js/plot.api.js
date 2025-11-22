@@ -6,36 +6,6 @@
 // - Načítá data z endpointu /api/aggregate a předává je rendereru grafu.
 // - Normalizuje načtená data a převádí časové hodnoty na Date objekty.
 // - Slouží jako hlavní vstupní bod pro načítání a vykreslování grafů.
-//
-// Závislosti:
-// - plot.utils.js (funkce todayKey, toDateIfIso)
-// - plot.normalize.js (funkce normalizeRows)
-// - plot.render.js (funkce renderPlot)
-//
-// Funkce:
-// - buildAggregateUrl(params)
-//   → Sestaví URL pro volání API /api/aggregate.
-//   → Parametry:
-//      - sensor_id: ID senzoru
-//      - level: úroveň agregace (monthly, daily, hourly, …)
-//      - key: časový klíč (např. "2025-11-11")
-//      - tz: volitelně časová zóna
-//      - tz_offset: volitelně offset časové zóny
-//   → Vrací string s kompletní URL.
-//
-// - fetchAndPlot(params)
-//   → Načte data z API a vykreslí graf.
-//   → Postup:
-//      1. Ověří parametry (sensor_id, level, key).
-//      2. Pokud chybí key, nastaví ho na todayKey().
-//      3. Sestaví URL pomocí buildAggregateUrl().
-//      4. Zavolá fetch() s cache=no-store.
-//      5. Zpracuje JSON odpověď (body.result, body.data nebo body).
-//      6. Normalizuje řádky pomocí normalizeRows().
-//      7. Převede hodnoty x na Date pomocí toDateIfIso().
-//      8. Zavolá renderPlot() s normalizovanými daty.
-//      9. Při chybě zaloguje error do konzole.
-//
 // ----------------------------------------------------
 
 import { todayKey, toDateIfIso } from './plot.utils.js';
@@ -43,17 +13,14 @@ import { normalizeRows } from './plot.normalize.js';
 import { renderPlot } from './plot.render.js';
 
 /**
- * buildAggregateUrl(params)
- * ----------------------------------------------------
  * Sestaví URL pro volání API /api/aggregate.
- *
- * @param {object} params Parametry volání
- * @param {string} params.sensor_id ID senzoru
- * @param {string} params.level Úroveň agregace (např. "daily")
- * @param {string} params.key Časový klíč (např. "2025-11-11")
- * @param {string} [params.tz] Časová zóna
- * @param {number} [params.tz_offset] Offset časové zóny
- * @returns {string} Kompletní URL pro volání API
+ * @param {object} params - Parametry volání
+ * @param {string} params.sensor_id - ID senzoru
+ * @param {string} params.level - úroveň agregace (např. 'daily', 'hourly')
+ * @param {string} params.key - klíč časového intervalu
+ * @param {string} [params.tz] - název časové zóny
+ * @param {number} [params.tz_offset] - offset časové zóny v minutách
+ * @returns {string} URL pro volání API
  */
 export function buildAggregateUrl(params) {
   const { sensor_id, level, key, tz, tz_offset } = params;
@@ -64,36 +31,75 @@ export function buildAggregateUrl(params) {
 }
 
 /**
- * fetchAndPlot(params)
- * ----------------------------------------------------
  * Načte data z API a vykreslí graf.
- *
- * @param {object} params Parametry volání
- * @param {string} params.sensor_id ID senzoru
- * @param {string} params.level Úroveň agregace (např. "daily")
- * @param {string} params.key Časový klíč (např. "2025-11-11")
- * @param {string} [params.tz] Časová zóna
- * @param {number} [params.tz_offset] Offset časové zóny
+ * @param {object} params - Parametry volání
  * @returns {Promise<void>}
  */
 export async function fetchAndPlot(params) {
-  if (!params || !params.sensor_id || !params.level || !params.key) return;
+  if (!params || !params.sensor_id || !params.level) {
+    console.warn('[plot.api] fetchAndPlot skipped – missing params', params);
+    return;
+  }
   if (!params.key) params.key = todayKey();
+  
+  if (!params.rows) {
+  }
 
-  const url = buildAggregateUrl(params);
   try {
-    const resp = await fetch(url, { cache: 'no-store' });
-    const body = await resp.json();
+    let rows = null;
+    let query = null;
+    if (params.rows) {
+      // Pokud jsou řádky předány přímo v parametrech, použij je
+      console.info('[plot.api] using provided rows', params.rows);
+      rows = params.rows;
+      query = params.query ?? null;
+    } else {
+      // Jinak načti data z API
+      const url = buildAggregateUrl(params);
+      const resp = await fetch(url, { cache: 'no-store' });
+      console.info('[plot.api] fetch response', url, resp.status);
 
-    const rows = body.result ?? body.data ?? body;
-    const query = body.query ?? null;
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => null);
+        console.error('[plot.api] non-ok response', resp.status, text);
+        return;
+      }
+
+      const body = await resp.json();
+      console.info('[plot.api] fetch json', body);
+
+      rows = body.result;
+      query = body.query || null;
+    }
+    if (!rows || !Array.isArray(rows)) {
+      console.warn('[plot.api] no rows returned', rows);
+      return;
+    }
+    console.info('[plot.api] rows3', rows);
+
     params.query = query;
+    console.info('[plot.api] raw rows', rows);
 
-    const normalized = normalizeRows(rows || []);
-    normalized.x = normalized.x.map(toDateIfIso);
+    let normalized;
+    try {
+      normalized = normalizeRows(rows);
+      normalized.x = (normalized.x || []).map(v => {
+        try {
+          return toDateIfIso(v);
+        } catch (err) {
+          console.error('[plot.api] toDateIfIso error', v, err);
+          return v;
+        }
+      });
+    } catch (err) {
+      console.error('[plot.api] normalizeRows error', err);
+      return;
+    }
 
+    console.info('[plot.api] normalized data', normalized);
+    console.info('[plot.api] calling renderPlot', { normalized, params });
     renderPlot(normalized, params);
   } catch (err) {
-    console.error('fetchAndPlot error', err);
+    console.error('[plot.api] fetchAndPlot error', err);
   }
 }

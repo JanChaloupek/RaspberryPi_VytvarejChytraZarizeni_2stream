@@ -19,6 +19,9 @@
 // ----------------------------------------------------
 
 import { initPlotEvents } from './plot.events.js';
+import { fetchAndPlot } from './plot.api.js';
+
+console.log('fetchAndPlot imported', fetchAndPlot);
 
 /**
  * Spuštění inicializace událostí a grafu.

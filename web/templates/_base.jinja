@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" data-bs-theme="light">
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}Dashboard{% endblock %}</title>
@@ -9,7 +9,7 @@
     <!-- Default CSS knihovny (Bootstrap, vlastní styly) -->
   {% endblock %}
 </head>
-<body class="bg-light">
+<body>
 
 {# ============================================================
    Navbar (horní lišta)
@@ -19,7 +19,7 @@
    - Zobrazuje logo + název aplikace.
    - Pravá část je připravena pro další prvky (např. login info).
    ============================================================ #}
-<nav class="navbar navbar-light bg-white border-bottom fixed-top">
+<nav class="navbar border-bottom fixed-top">
   <div class="container-fluid">
     <div class="d-flex align-items-center gap-2">
       <!-- Tlačítko pro otevření sidebaru na mobilu -->
@@ -29,10 +29,9 @@
         <i class="bi bi-list"></i>
       </button>
       <!-- Logo + název aplikace -->
-      <a class="navbar-brand mb-0 h1 text-primary d-flex align-items-center gap-2" href="#">
-        {% if favicon_filename %}
-          <img src="{{ url_for('static', filename=favicon_filename) }}" alt="Logo" width="24" height="24">
-        {% endif %}
+      <a class="navbar-brand mb-0 h1 d-flex align-items-center gap-2" href="#">
+        <img src="{{ url_for('static', filename='img/favicon.png') }}" alt="Logo" width="24" height="24" class="logo-light">
+        <img src="{{ url_for('static', filename='img/favicon-dark.png') }}" alt="Logo" width="24" height="24" class="logo-dark">
         {% block navbar_title %}Dashboard{% endblock %}
       </a>
     </div>
@@ -83,6 +82,10 @@
    ============================================================ #}
 {% block scripts %}
   <!-- Default JS knihovny -->
+{% endblock %}
+
+{% block modals %}
+  <!-- Misto pro modalni okna -->
 {% endblock %}
 </body>
 </html>

@@ -1,0 +1,26 @@
+body {
+  font-family: system-ui, sans-serif;
+  padding: 2rem;
+  background: #fafafa;
+  color: #333;
+}
+
+h1 { margin-bottom: 1.5rem; }
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.color-block {
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--color);
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+.color-block.light { border: 2px solid #ccc; }
+.color-block.dark { border: 2px solid #444; }

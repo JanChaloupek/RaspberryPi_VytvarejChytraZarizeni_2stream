@@ -5,38 +5,7 @@
 // - Generuje trace objekty pro hlavní datové série (teplota, vlhkost, rosný bod).
 // - Přidává statistické čáry (min, max, průměr) jako horizontální linie.
 // - Odděluje logiku tvorby trace od samotného vykreslování grafu.
-//
-// Závislosti:
-// - plot.utils.js (funkce computeStats)
-//
-// Funkce:
-// - makeHorizontalTrace(x, value, name, yaxis, color, dash)
-//   → Vytvoří horizontální trace (scatter line) pro danou hodnotu.
-//   → Parametry:
-//      - x: pole hodnot na ose X (čas).
-//      - value: hodnota, která se má vykreslit jako horizontální čára.
-//      - name: název trace (např. "Teplota min").
-//      - yaxis: osa Y, ke které trace patří ("y1" nebo "y2").
-//      - color: barva čáry.
-//      - dash: styl čáry ("dot" nebo "dash").
-//   → Vrací objekt trace pro Plotly.
-//
-// - addSeries(traces, x, values, label, yaxis, mainColor, minColor, maxColor, avgColor)
-//   → Přidá hlavní sérii a statistické čáry do pole traces.
-//   → Parametry:
-//      - traces: pole, do kterého se trace přidávají.
-//      - x: pole hodnot na ose X.
-//      - values: pole hodnot pro sérii.
-//      - label: název série (např. "Teplota").
-//      - yaxis: osa Y ("y1" nebo "y2").
-//      - mainColor: barva hlavní série.
-//      - minColor: barva čáry pro minimum.
-//      - maxColor: barva čáry pro maximum.
-//      - avgColor: barva čáry pro průměr.
-//   → Přidá hlavní trace (lines+markers).
-//   → Vypočítá statistiky (min, max, avg) pomocí computeStats().
-//   → Přidá horizontální čáry pro min, max a průměr.
-//
+// - Přidány diagnostické logy.
 // ----------------------------------------------------
 
 import { computeStats } from './plot.utils.js';
@@ -45,16 +14,9 @@ import { computeStats } from './plot.utils.js';
  * makeHorizontalTrace()
  * ----------------------------------------------------
  * Vytvoří horizontální trace pro danou hodnotu.
- *
- * @param {Array<any>} x Pole hodnot na ose X
- * @param {number} value Hodnota pro horizontální čáru
- * @param {string} name Název trace
- * @param {string} yaxis Osa Y ("y1" nebo "y2")
- * @param {string} color Barva čáry
- * @param {string} [dash='dot'] Styl čáry ("dot" nebo "dash")
- * @returns {object} Trace objekt pro Plotly
  */
 export function makeHorizontalTrace(x, value, name, yaxis, color, dash='dot') {
+//  console.log('[makeHorizontalTrace] creating', { name, value, yaxis, color, dash, xLength: x.length });
   return {
     x,
     y: Array(x.length).fill(value),
@@ -64,7 +26,7 @@ export function makeHorizontalTrace(x, value, name, yaxis, color, dash='dot') {
     mode: 'lines',
     line: { dash, width: 1, color },
     hoverinfo: 'text',
-    text: Array(x.length).fill(`${name}: ${value.toFixed(2)}`)
+    text: Array(x.length).fill(`${name}: ${value !== null && value !== undefined ? value.toFixed(2) : 'null'}`)
   };
 }
 
@@ -72,21 +34,17 @@ export function makeHorizontalTrace(x, value, name, yaxis, color, dash='dot') {
  * addSeries()
  * ----------------------------------------------------
  * Přidá hlavní sérii a statistické čáry (min, max, průměr) do pole traces.
- *
- * @param {Array<object>} traces Pole trace objektů
- * @param {Array<any>} x Pole hodnot na ose X
- * @param {Array<number>|null} values Pole hodnot pro sérii
- * @param {string} label Název série (např. "Teplota")
- * @param {string} yaxis Osa Y ("y1" nebo "y2")
- * @param {string} mainColor Barva hlavní série
- * @param {string} minColor Barva čáry pro minimum
- * @param {string} maxColor Barva čáry pro maximum
- * @param {string} avgColor Barva čáry pro průměr
  */
 export function addSeries(traces, x, values, label, yaxis, mainColor, minColor, maxColor, avgColor) {
-  if (!values) return;
+//  console.log('[addSeries] called', { label, yaxis, valuesLength: values ? values.length : null });
+
+  if (!values || !Array.isArray(values) || values.length === 0) {
+    console.warn(`[addSeries] no values for ${label}`, values);
+    return;
+  }
+
   // Hlavní trace
-  traces.push({
+  const mainTrace = {
     x,
     y: values,
     name: label,
@@ -94,11 +52,27 @@ export function addSeries(traces, x, values, label, yaxis, mainColor, minColor, 
     type: 'scatter',
     mode: 'lines+markers',
     line: { color: mainColor }
-  });
+  };
+  traces.push(mainTrace);
+  console.log('[addSeries] main trace added', mainTrace);
 
   // Statistické čáry
   const { min, max, avg } = computeStats(values);
-  if (min !== null) traces.push(makeHorizontalTrace(x, min, `${label} min`, yaxis, minColor));
-  if (max !== null) traces.push(makeHorizontalTrace(x, max, `${label} max`, yaxis, maxColor));
-  if (avg !== null) traces.push(makeHorizontalTrace(x, avg, `${label} průměr`, yaxis, avgColor, 'dash'));
+//  console.log('[addSeries] stats', { label, min, max, avg });
+
+  if (min !== null) {
+    const t = makeHorizontalTrace(x, min, `${label} min`, yaxis, minColor);
+    traces.push(t);
+//    console.log('[addSeries] min trace added', t);
+  }
+  if (max !== null) {
+    const t = makeHorizontalTrace(x, max, `${label} max`, yaxis, maxColor);
+    traces.push(t);
+//    console.log('[addSeries] max trace added', t);
+  }
+  if (avg !== null) {
+    const t = makeHorizontalTrace(x, avg, `${label} průměr`, yaxis, avgColor, 'dash');
+    traces.push(t);
+//    console.log('[addSeries] avg trace added', t);
+  }
 }

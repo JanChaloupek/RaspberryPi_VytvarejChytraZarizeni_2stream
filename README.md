@@ -10,11 +10,14 @@ Aplikace běží na Raspberry Pi 5 a skládá se ze tří spustitelných skript�
 - `./CloudFlared/run_cloudflared.sh` – spouští Cloudflare Tunnel pro bezpečný vzdálený přístup
 
 Měřicí skript i web (Python skripty) si při prvním spuštění sami vytvoří virtuální prostředí (`venv`) a nainstalují potřebné závislosti.  
-Logování výstupů probíhá do adresáře `./log` (s vyjimkou uživatelského):  
-- `./log/measure.log` – měření  
+
+Logy se ukládají do podadresáře `log` projektu (`/home/<user-name>/<project-name>/log/`), s výjimkou uživatelských logů webu (`./web/app.log`).  
+
 - `./log/cf.log` – Cloudflare Tunnel  
+- `./log/measure.log` – měření  
 - `./log/web.log` – standardní a chybový výstup webu  
 - `./web/app.log` – uživatelské logy webové aplikace (zobrazitelné přímo ve webu)
+
 
 ## 🚀 Quickstart
 ```bash
@@ -45,10 +48,10 @@ cloudflared tunnel create <tunnel-name>
 V adresáři `~/.cloudflared/` vznikne JSON soubor s credentials.
 
 ### 3. Konfigurační soubor
-`~/.cloudflared/config.yml`:
+`config.yml`:
 ```yaml
 tunnel: <tunnel-name>
-credentials-file: /home/pi/.cloudflared/<tunnel-id>.json
+credentials-file: /home/<user-name>/.cloudflared/<tunnel-id>.json
 
 ingress:
   - hostname: rb5.chaloupek.uk
@@ -85,7 +88,7 @@ cloudflared tunnel run <tunnel-name>
 3. Není nutné ručně vytvářet `venv` – oba skripty to provedou samy při prvním spuštění.  
 
 ## ⚙️ Konfigurace
-- Nastavení aplikace: `config.yaml` (nastavení tunelu)  
+- Nastavení aplikace: `config.yml` (tunel)  
 - Logy: `./log/<log-name>.log`  
 
 ## 🚀 Spuštění
@@ -113,11 +116,11 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/USER/PROJECT/measure
-ExecStart=/home/USER/PROJECT/measure/run.sh
+WorkingDirectory=/home/<user-name>/<project-name>/measure
+ExecStart=/home/<user-name>/<project-name>/measure/run.sh
 Restart=always
-StandardOutput=append:/home/USER/PROJECT/log/measure.log
-StandardError=append:/home/USER/PROJECT/log/measure.log
+StandardOutput=append:/home/<user-name>/<project-name>/log/measure.log
+StandardError=append:/home/<user-name>/<project-name>/log/measure.log
 
 [Install]
 WantedBy=default.target
@@ -131,11 +134,11 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/USER/PROJECT/web
-ExecStart=/home/USER/PROJECT/web/start.sh
+WorkingDirectory=/home/<user-name>/<project-name>/web
+ExecStart=/home/<user-name>/<project-name>/web/start.sh
 Restart=always
-StandardOutput=append:/home/USER/PROJECT/log/web.log
-StandardError=append:/home/USER/PROJECT/log/web.log
+StandardOutput=append:/home/<user-name>/<project-name>/log/web.log
+StandardError=append:/home/<user-name>/<project-name>/log/web.log
 
 [Install]
 WantedBy=default.target
@@ -149,11 +152,11 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/USER/PROJECT/CloudFlared
-ExecStart=/home/USER/PROJECT/CloudFlared/run_cloudflared.sh
+WorkingDirectory=/home/<user-name>/<project-name>/CloudFlared
+ExecStart=/home/<user-name>/<project-name>/CloudFlared/run_cloudflared.sh
 Restart=always
-StandardOutput=append:/home/USER/PROJECT/log/cf.log
-StandardError=append:/home/USER/PROJECT/log/cf.log
+StandardOutput=append:/home/<user-name>/<project-name>/log/cf.log
+StandardError=append:/home/<user-name>/<project-name>/log/cf.log
 
 [Install]
 WantedBy=default.target
@@ -196,12 +199,12 @@ journalctl --user -u cloudflared.service -f
 nebo přímo ve webové aplikaci (Dashboard → Prohlížeč logů).
 
 ## 📂 Závislosti
-- Python 3.11+ (instalace probíhá automaticky při prvním spuštění skriptů)  
-- Knihovny: instalují se automaticky (`venv + pip install`)  
+- Python 3.11+ (na Raspberry Pi 5 je součástí oficiálního obrazu Raspberry Pi OS)
+- Knihovny: instalují se automaticky (`venv + pip install`)
 
 ## 🏗️ Architektura
 - **Backend (Python skripty)** – `measure/run.sh` pro měření, `web/start.sh` pro webový server  
-- **Konfigurační vrstva** – `config.yaml`  
+- **Konfigurační vrstva** – `config.yml`  
 - **Logování** – `./log/<log-name>.log`  
 - **Systemd uživatelské služby** – automatické spuštění po nabootování Raspberry Pi 5  
 - **Cloudflare Tunnel (`run_cloudflared.sh`)** – bezpečný HTTPS přístup přes doménu `chaloupek.uk`

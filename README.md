@@ -190,12 +190,7 @@ Pro sledování v reálném čase:
 ```bash
 tail -f ./log/<log-name>.log
 ```
-nebo přes journal:
-```bash
-journalctl --user -u measure.service -f
-journalctl --user -u web.service -f
-journalctl --user -u cloudflared.service -f
-```
+
 nebo přímo ve webové aplikaci (Dashboard → Prohlížeč logů).
 
 ## 📂 Závislosti

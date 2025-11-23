@@ -1,7 +1,7 @@
 # RaspberryPi: Vytvářej chytrá zařízení
 
-Tento projekt ukazuje, jak z Raspberry Pi 5 udělat chytré zařízení s měřením, vizualizací dat a bezpečným vzdáleným přístupem přes Cloudflare Tunnel.  
-Cílem je mít aplikaci, která se sama udržuje, loguje a spouští po restartu díky systemd uživatelským službám.
+Tento projekt ukazuje, jak z Raspberry Pi 5 udělat chytré zařízení s měřením, vizualizací dat a bezpečným vzdáleným přístupem přes **Cloudflare Tunnel**.  
+Cílem je mít aplikaci, která se sama udržuje, loguje a spouští po restartu díky **systemd uživatelským službám**.
 
 ## 📖 Popis projektu
 Aplikace běží na Raspberry Pi 5 a skládá se ze tří spustitelných skriptů:
@@ -9,8 +9,12 @@ Aplikace běží na Raspberry Pi 5 a skládá se ze tří spustitelných skript�
 - `./web/start.sh` – spouští webový server pro vizualizaci dat  
 - `./CloudFlared/run_cloudflared.sh` – spouští Cloudflare Tunnel pro bezpečný vzdálený přístup
 
-Každý skript si při prvním spuštění sám vytvoří virtuální prostředí (`venv`) a nainstaluje potřebné závislosti.  
-Logování probíhá do souboru `./log/app.log`.  
+Měřicí skript i web (Python skripty) si při prvním spuštění sami vytvoří virtuální prostředí (`venv`) a nainstalují potřebné závislosti.  
+Logování výstupů probíhá do adresáře `./log` (s vyjimkou uživatelského):  
+- `./log/measure.log` – měření  
+- `./log/cf.log` – Cloudflare Tunnel  
+- `./log/web.log` – standardní a chybový výstup webu  
+- `./web/app.log` – uživatelské logy webové aplikace (zobrazitelné přímo ve webu)
 
 ## 🚀 Quickstart
 ```bash
@@ -21,30 +25,29 @@ Logování probíhá do souboru `./log/app.log`.
 ./web/start.sh
 
 # kontrola logů
-tail -f ./log/app.log
+tail -f ./log/<log-name>.log
 ```
 
-## 🔧 Konfigurace Cloudflare tunelu (vlastní doména)
-Aplikace je zpřístupněna přes Cloudflare Tunnel s vlastní doménou chaloupek.uk. Tunel zajišťuje HTTPS přístup, automatické certifikáty a směrování na jednotlivé webové instance běžící na Raspberry Pi.
-Je potřebné v cloudflare zakoupit vlastní doménu (nebo nějakou svou doménu přenést do clouflare).
+## 🔧 Konfigurace Cloudflare Tunnel (vlastní doména)
+Aplikace je zpřístupněna přes Cloudflare Tunnel s vlastní doménou `chaloupek.uk`. Tunel zajišťuje HTTPS přístup, automatické certifikáty a směrování na jednotlivé webové instance běžící na Raspberry Pi.  
+Je potřeba mít doménu v Cloudflare (zakoupit nebo převést).
 
 ### 1. Přihlášení do Cloudflare
-Na Raspberry Pi se přihlaste ke svému účtu Cloudflare:
 ```bash
 cloudflared login
 ```
-Po přihlášení se vytvoří soubor s autentifikací ~/.cloudflared/cert.pem.
+Po přihlášení se vytvoří soubor s autentifikací `~/.cloudflared/cert.pem`.
 
 ### 2. Vytvoření tunelu
 ```bash
-cloudflared tunnel create rb5
+cloudflared tunnel create <tunnel-name>
 ```
-V adresáři ~/.cloudflared/ vznikne JSON soubor s credentials.
+V adresáři `~/.cloudflared/` vznikne JSON soubor s credentials.
 
 ### 3. Konfigurační soubor
-Vytvořte soubor ~/.cloudflared/config.yml s následujícím obsahem:
+`~/.cloudflared/config.yml`:
 ```yaml
-tunnel: rb5
+tunnel: <tunnel-name>
 credentials-file: /home/pi/.cloudflared/<tunnel-id>.json
 
 ingress:
@@ -56,60 +59,53 @@ ingress:
 
   - service: http_status:404
 ```
+
 ### 4. Nastavení DNS
-Propojte tunel s DNS záznamy:
 ```bash
-cloudflared tunnel route dns rb5 rb5.chaloupek.uk
+cloudflared tunnel route dns <tunnel-name> rb5.chaloupek.uk
 ```
+
 ### 5. Spuštění tunelu
-Tunel spustíte příkazem:
 ```bash
-cloudflared tunnel run rb5
+cloudflared tunnel run <tunnel-name>
 ```
+
 ### 6. HTTPS a bezpečnost
-V Cloudflare dashboardu nastavte **Always Use HTTPS** na minimální verzi **TLS 1.2**.
-
-Přesměrování **chaloupek.uk** → **www.chaloupek.uk** je řešeno přes Page Rules.
-
-Certifikáty jsou spravovány automaticky Cloudflare.
+- V Cloudflare dashboardu nastavte **Always Use HTTPS** a minimální verzi **TLS 1.2**  
+- Přesměrování `chaloupek.uk` → `www.chaloupek.uk` je řešeno přes Page Rules  
+- Certifikáty spravuje automaticky Cloudflare
 
 ## 💻 Instalace
 1. Naklonujte repozitář:
    ```bash
-   git clone https://github.com/uzivatel/projekt.git
-   cd projekt
+   git clone https://github.com/JanChaloupek/RaspberryPi_VytvarejChytraZarizeni_2stream.git
+   cd RaspberryPi_VytvarejChytraZarizeni_2stream
    ```
 2. Ujistěte se, že máte nainstalovaný Python 3.11+ (Raspberry Pi 5 jej podporuje).  
-3. Není nutné ručně vytvářet venv – oba skripty to provedou samy při prvním spuštění.  
+3. Není nutné ručně vytvářet `venv` – oba skripty to provedou samy při prvním spuštění.  
 
 ## ⚙️ Konfigurace
-Nastavení aplikace se provádí v souboru config.yaml (např. časová zóna, databázové připojení).  
-Logy se ukládají do ./log/app.log.  
+- Nastavení aplikace: `config.yaml` (nastavení tunelu)  
+- Logy: `./log/<log-name>.log`  
 
 ## 🚀 Spuštění
-### Ruční spuštění:
+### Ruční spuštění
 ```bash
 ./measure/run.sh
 ./web/start.sh
 ./CloudFlared/run_cloudflared.sh
 ```
-### Automatické spuštění po startu (uživatelské systemd služby)
-Aby se skripty spustily automaticky po nabootování Raspberry Pi, je potřeba nastavit uživatelské služby (systemd --user).
 
+### Automatické spuštění po startu (systemd uživatelské služby)
 #### 1. Povolení uživatelských služeb
 ```bash
-sudo loginctl enable-linger pi
-```
-Tím zajistíš, že služby poběží i po rebootu, i když se uživatel pi nepřihlásí.
-
-#### 2. Vytvoření service souborů
-Vytvoř adresář:
-
-```bash
-mkdir -p ~/.config/systemd/user
+sudo loginctl enable-linger <user-name>
 ```
 
-~/.config/systemd/user/measure.service
+#### 2. Service soubory
+Adresář: `~/.config/systemd/user`
+
+##### measure.service
 ```ini
 [Unit]
 Description=Measure Service
@@ -117,17 +113,17 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi/projekt/measure
-ExecStart=/home/pi/projekt/measure/run.sh
+WorkingDirectory=/home/USER/PROJECT/measure
+ExecStart=/home/USER/PROJECT/measure/run.sh
 Restart=always
-StandardOutput=append:/home/pi/projekt/log/app.log
-StandardError=append:/home/pi/projekt/log/app.log
+StandardOutput=append:/home/USER/PROJECT/log/measure.log
+StandardError=append:/home/USER/PROJECT/log/measure.log
 
 [Install]
 WantedBy=default.target
 ```
 
-~/.config/systemd/user/web.service
+##### web.service
 ```ini
 [Unit]
 Description=Web Service
@@ -135,17 +131,17 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi/projekt/web
-ExecStart=/home/pi/projekt/web/start.sh
+WorkingDirectory=/home/USER/PROJECT/web
+ExecStart=/home/USER/PROJECT/web/start.sh
 Restart=always
-StandardOutput=append:/home/pi/projekt/log/app.log
-StandardError=append:/home/pi/projekt/log/app.log
+StandardOutput=append:/home/USER/PROJECT/log/web.log
+StandardError=append:/home/USER/PROJECT/log/web.log
 
 [Install]
 WantedBy=default.target
 ```
 
-~/.config/systemd/user/cloudflared.service
+##### cloudflared.service
 ```ini
 [Unit]
 Description=Cloudflare Tunnel Service
@@ -153,11 +149,11 @@ After=network.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/pi/projekt/CloudFlared
-ExecStart=/home/pi/projekt/CloudFlared/run_cloudflared.sh
+WorkingDirectory=/home/USER/PROJECT/CloudFlared
+ExecStart=/home/USER/PROJECT/CloudFlared/run_cloudflared.sh
 Restart=always
-StandardOutput=append:/home/pi/projekt/log/app.log
-StandardError=append:/home/pi/projekt/log/app.log
+StandardOutput=append:/home/USER/PROJECT/log/cf.log
+StandardError=append:/home/USER/PROJECT/log/cf.log
 
 [Install]
 WantedBy=default.target
@@ -167,8 +163,8 @@ WantedBy=default.target
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable measure.service
-systemctl --user enable web.service
 systemctl --user start measure.service
+systemctl --user enable web.service
 systemctl --user start web.service
 systemctl --user enable cloudflared.service
 systemctl --user start cloudflared.service
@@ -178,45 +174,39 @@ systemctl --user start cloudflared.service
 ```bash
 systemctl --user status measure.service
 systemctl --user status web.service
+systemctl --user status cloudflared.service
 ```
 
 #### 5. Logy
-- Skripty `measure` a `web` zapisují do:
-```
-./log/app.log
-```
-
-- Cloudflare Tunnel (`cloudflared.service`) standardně loguje do systemd journalu:
-```bash
-journalctl --user -u cloudflared.service -f
-```
+- `./log/cf.log`  
+- `./log/measure.log`  
+- `./log/web.log`  
+- `./web/app.log` (uživatelské logy webu)
 
 Pro sledování v reálném čase:
 ```bash
-tail -f ./log/app.log
+tail -f ./log/<log-name>.log
 ```
 nebo přes journal:
 ```bash
 journalctl --user -u measure.service -f
 journalctl --user -u web.service -f
+journalctl --user -u cloudflared.service -f
 ```
-nebo přes ve webové aplikaci po přihlášení účtem s právy správce
-```
-Dashbord -> Prohlížeč logů 
-```
+nebo přímo ve webové aplikaci (Dashboard → Prohlížeč logů).
 
 ## 📂 Závislosti
-Python: 3.11+ (instalace probíhá automaticky při prvním spuštění skriptů)  
-Knihovny: instalují se automaticky (venv + pip install)  
+- Python 3.11+ (instalace probíhá automaticky při prvním spuštění skriptů)  
+- Knihovny: instalují se automaticky (`venv + pip install`)  
 
 ## 🏗️ Architektura
 - **Backend (Python skripty)** – `measure/run.sh` pro měření, `web/start.sh` pro webový server  
-- **Konfigurační vrstva** – soubor `config.yaml`  
-- **Logování** – `./log/app.log`  
-- **Systemd uživatelské služby** – zajišťují automatické spuštění po nabootování Raspberry Pi 5  
-- **Cloudflare Tunnel (run_cloudflared.sh)** – zajišťuje bezpečný HTTPS přístup přes vlastní doménu `chaloupek.uk`
+- **Konfigurační vrstva** – `config.yaml`  
+- **Logování** – `./log/<log-name>.log`  
+- **Systemd uživatelské služby** – automatické spuštění po nabootování Raspberry Pi 5  
+- **Cloudflare Tunnel (`run_cloudflared.sh`)** – bezpečný HTTPS přístup přes doménu `chaloupek.uk`
 
 ## 📎 Další zdroje
-- [Cloudflare Tunnel dokumentace](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)
-- [systemd uživatelské služby](https://www.freedesktop.org/software/systemd/man/systemd.service.html)
-- [Plotly.js](https://plotly.com/javascript/)
+- [Cloudflare Tunnel dokumentace](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/)  
+- [systemd uživatelské služby](https://www.freedesktop.org/software/systemd/man/systemd.service.html)  
+- [Plotly.js](https://plotly.com/javascript/)  

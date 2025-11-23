@@ -65,6 +65,7 @@ ingress:
 ### 4. Nastavení DNS
 ```bash
 cloudflared tunnel route dns <tunnel-name> rb5.chaloupek.uk
+cloudflared tunnel route dns <tunnel-name> www.chaloupek.uk
 ```
 
 ### 5. Spuštění tunelu

@@ -29,6 +29,7 @@ Logy se ukládají do podadresáře `log` projektu (`/home/<user-name>/<project-
 
 # kontrola logů
 tail -f ./log/<log-name>.log
+tail -f ./log/<log-name>.log
 ```
 
 ## 🔧 Konfigurace Cloudflare Tunnel (vlastní doména)
@@ -43,6 +44,7 @@ Po přihlášení se vytvoří soubor s autentifikací `~/.cloudflared/cert.pem`
 
 ### 2. Vytvoření tunelu
 ```bash
+cloudflared tunnel create <tunnel-name>
 cloudflared tunnel create <tunnel-name>
 ```
 V adresáři `~/.cloudflared/` vznikne JSON soubor s credentials.
@@ -66,10 +68,12 @@ ingress:
 ### 4. Nastavení DNS
 ```bash
 cloudflared tunnel route dns <tunnel-name> rb5.chaloupek.uk
+cloudflared tunnel route dns <tunnel-name> rb5.chaloupek.uk
 ```
 
 ### 5. Spuštění tunelu
 ```bash
+cloudflared tunnel run <tunnel-name>
 cloudflared tunnel run <tunnel-name>
 ```
 
@@ -81,6 +85,8 @@ cloudflared tunnel run <tunnel-name>
 ## 💻 Instalace
 1. Naklonujte repozitář:
    ```bash
+   git clone https://github.com/JanChaloupek/RaspberryPi_VytvarejChytraZarizeni_2stream.git
+   cd RaspberryPi_VytvarejChytraZarizeni_2stream
    git clone https://github.com/JanChaloupek/RaspberryPi_VytvarejChytraZarizeni_2stream.git
    cd RaspberryPi_VytvarejChytraZarizeni_2stream
    ```
@@ -102,6 +108,7 @@ cloudflared tunnel run <tunnel-name>
 ### Automatické spuštění po startu (systemd uživatelské služby)
 #### 1. Povolení uživatelských služeb
 ```bash
+sudo loginctl enable-linger <user-name>
 sudo loginctl enable-linger <user-name>
 ```
 
@@ -168,6 +175,7 @@ systemctl --user daemon-reload
 systemctl --user enable measure.service
 systemctl --user start measure.service
 systemctl --user enable web.service
+systemctl --user enable web.service
 systemctl --user start web.service
 systemctl --user enable cloudflared.service
 systemctl --user start cloudflared.service
@@ -177,6 +185,7 @@ systemctl --user start cloudflared.service
 ```bash
 systemctl --user status measure.service
 systemctl --user status web.service
+systemctl --user status cloudflared.service
 systemctl --user status cloudflared.service
 ```
 
@@ -188,6 +197,7 @@ systemctl --user status cloudflared.service
 
 Pro sledování v reálném čase:
 ```bash
+tail -f ./log/<log-name>.log
 tail -f ./log/<log-name>.log
 ```
 nebo přes journal:
